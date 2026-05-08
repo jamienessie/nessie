@@ -55,6 +55,7 @@
     "@nessie/adapter-utils": "workspace:*",
     "@nessie/db": "workspace:*",
     "@nessie/plugin-sdk": "workspace:*",
+    "@nessie/proxy": "workspace:*",
     "@nessie/shared": "workspace:*",
     "ajv": "^8.18.0",
     "ajv-formats": "^3.0.1",

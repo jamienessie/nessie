@@ -43,6 +43,14 @@ import { printStartupBanner } from "./startup-banner.js";
 import { getBoardClaimWarningUrl, initializeBoardClaimChallenge } from "./board-claim.js";
 import { maybePersistWorktreeRuntimePorts } from "./worktree-config.js";
 import { initTelemetry, getTelemetryClient } from "./telemetry.js";
+import {
+  startNessieProxy,
+  startHealthMonitor,
+  NESSIE_PROXY_DEFAULT_HOST,
+  NESSIE_PROXY_DEFAULT_PORT,
+  type ProxyHandle,
+  type HealthMonitor,
+} from "@nessie/proxy";
 import { conflict } from "./errors.js";
 import type {
   InstanceDatabaseBackupRunResult,
@@ -520,6 +528,22 @@ export async function startServer(): Promise<StartedServer> {
     authReady = true;
   }
 
+  // Start the Nessie cost-tier proxy. Listens on a separate port (7777 by
+  // default) and routes T1/T2/T3 LLM calls per credential. Errors during
+  // boot don't fatal the main server -- the proxy is best-effort in v1, and
+  // the operator can opt-in agents to direct provider calls if it's down.
+  let nessieProxy: ProxyHandle | null = null;
+  let nessieHealthMonitor: HealthMonitor | null = null;
+  try {
+    const proxyPort = Number(process.env.NESSIE_PROXY_PORT) || NESSIE_PROXY_DEFAULT_PORT;
+    const proxyHost = process.env.NESSIE_PROXY_HOST?.trim() || NESSIE_PROXY_DEFAULT_HOST;
+    nessieProxy = await startNessieProxy({ db: db as any, port: proxyPort, host: proxyHost });
+    logger.info({ host: proxyHost, port: proxyPort }, "Nessie cost-tier proxy listening");
+    nessieHealthMonitor = startHealthMonitor(db as any);
+  } catch (err) {
+    logger.error({ err }, "Nessie proxy failed to start; agents must use direct provider calls");
+  }
+
   if (resolvedEmbeddedPostgresPort !== null && resolvedEmbeddedPostgresPort !== config.embeddedPostgresPort) {
     config.embeddedPostgresPort = resolvedEmbeddedPostgresPort;
   }
@@ -876,6 +900,17 @@ export async function startServer(): Promise<StartedServer> {
       if (telemetryClient) {
         telemetryClient.stop();
         await telemetryClient.flush();
+      }
+
+      if (nessieHealthMonitor) {
+        nessieHealthMonitor.stop();
+      }
+      if (nessieProxy) {
+        try {
+          await nessieProxy.close();
+        } catch (err) {
+          logger.error({ err }, "Failed to close Nessie proxy cleanly");
+        }
       }
 
       if (embeddedPostgres && embeddedPostgresStartedByThisProcess) {
