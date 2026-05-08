@@ -58,6 +58,7 @@ export { costEvents } from "./cost_events.js";
 export { credentials } from "./credentials.js";
 export { credentialHealth } from "./credential_health.js";
 export { subscriptionQuotas } from "./subscription_quotas.js";
+export { departments } from "./departments.js";
 export { financeEvents } from "./finance_events.js";
 export { approvals } from "./approvals.js";
 export { approvalComments } from "./approval_comments.js";

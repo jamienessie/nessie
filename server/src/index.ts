@@ -493,6 +493,20 @@ export async function startServer(): Promise<StartedServer> {
     | undefined;
   if (config.deploymentMode === "local_trusted") {
     await ensureLocalTrustedBoardPrincipal(db as any);
+    // Seed the eight default departments for every existing company. This
+    // is idempotent — only missing rows are inserted, so re-runs are
+    // cheap. Required for new agents to attach via departmentId.
+    const { seedDefaultDepartments } = await import("./services/departments.js");
+    const companyRows = await (db as any).select({ id: companies.id }).from(companies);
+    for (const company of companyRows) {
+      const seedResult = await seedDefaultDepartments(db as any, company.id);
+      if (seedResult.inserted > 0) {
+        logger.info(
+          { companyId: company.id, inserted: seedResult.inserted, existing: seedResult.existing },
+          "Seeded default departments for company",
+        );
+      }
+    }
   }
   if (config.deploymentMode === "authenticated") {
     const {

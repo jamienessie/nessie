@@ -34,6 +34,22 @@ export const issues = pgTable(
     priority: text("priority").notNull().default("medium"),
     assigneeAgentId: uuid("assignee_agent_id").references(() => agents.id),
     assigneeUserId: text("assignee_user_id"),
+    // Reviewer pattern: assignee writes work, reviewer approves. When the
+    // assignee submits and the issue moves to 'in_review', the heartbeat
+    // wakes the reviewer agent. Nullable so non-reviewer-pattern issues
+    // still validate. Wiring lives in services/issues.ts.
+    reviewerAgentId: uuid("reviewer_agent_id").references(() => agents.id),
+    // Acceptance criteria: array of bullet strings the assignee must
+    // satisfy and the reviewer signs off against.
+    acceptanceCriteria: jsonb("acceptance_criteria").$type<string[]>().notNull().default([]),
+    // Evidence pointers: links to files, diffs, test runs, screenshots,
+    // meeting quotes that back the assignee's claim of "done". Each entry
+    // is { kind, ref, summary?, addedAt }.
+    evidenceRefs: jsonb("evidence_refs").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    // Cost tier the work itself requires. Optional override of the
+    // assignee agent's default tier; the heartbeat reads this when
+    // stamping X-Nessie-Tier on the proxy invocation.
+    tierRequired: text("tier_required"),
     checkoutRunId: uuid("checkout_run_id").references(() => heartbeatRuns.id, { onDelete: "set null" }),
     executionRunId: uuid("execution_run_id").references(() => heartbeatRuns.id, { onDelete: "set null" }),
     executionAgentNameKey: text("execution_agent_name_key"),
@@ -78,6 +94,11 @@ export const issues = pgTable(
     assigneeUserStatusIdx: index("issues_company_assignee_user_status_idx").on(
       table.companyId,
       table.assigneeUserId,
+      table.status,
+    ),
+    reviewerStatusIdx: index("issues_company_reviewer_status_idx").on(
+      table.companyId,
+      table.reviewerAgentId,
       table.status,
     ),
     parentIdx: index("issues_company_parent_idx").on(table.companyId, table.parentId),

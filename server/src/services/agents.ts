@@ -33,6 +33,13 @@ const CONFIG_REVISION_FIELDS = [
   "name",
   "role",
   "title",
+  "humanFirstName",
+  "humanLastName",
+  "tier",
+  "departmentId",
+  "autonomyLevel",
+  "reputationScore",
+  "roleTemplateKey",
   "reportsTo",
   "capabilities",
   "adapterType",
@@ -94,6 +101,13 @@ function buildConfigSnapshot(
     name: row.name,
     role: row.role,
     title: row.title,
+    humanFirstName: row.humanFirstName,
+    humanLastName: row.humanLastName,
+    tier: row.tier,
+    departmentId: row.departmentId,
+    autonomyLevel: row.autonomyLevel,
+    reputationScore: row.reputationScore,
+    roleTemplateKey: row.roleTemplateKey,
     reportsTo: row.reportsTo,
     capabilities: row.capabilities,
     adapterType: row.adapterType,
@@ -103,6 +117,26 @@ function buildConfigSnapshot(
     budgetMonthlyCents: row.budgetMonthlyCents,
     metadata,
   };
+}
+
+// Helper: assemble the human-readable display label for an agent. Used by
+// every API response and every UI surface so the same string ("First Last
+// · Title") shows in agent cards, audit logs, meeting transcripts, and
+// toast notifications. Returns the bare `name` as a fallback if neither
+// human name part is set (legacy/imported rows).
+export function buildAgentDisplayLabel(row: {
+  name: string;
+  humanFirstName?: string | null;
+  humanLastName?: string | null;
+  title?: string | null;
+}): { displayName: string; titleLabel: string | null; label: string } {
+  const first = row.humanFirstName?.trim() ?? "";
+  const last = row.humanLastName?.trim() ?? "";
+  const display = `${first} ${last}`.trim();
+  const displayName = display.length > 0 ? display : row.name;
+  const titleLabel = row.title?.trim() && row.title.trim().length > 0 ? row.title.trim() : null;
+  const label = titleLabel ? `${displayName} · ${titleLabel}` : displayName;
+  return { displayName, titleLabel, label };
 }
 
 function containsRedactedMarker(value: unknown): boolean {
