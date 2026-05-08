@@ -93,7 +93,7 @@ function resolveAgentJwtSecretStatus(
 
   return {
     status: "warn",
-    message: "missing (run `pnpm paperclipai onboard`)",
+    message: "missing (run `pnpm nessie onboard`)",
   };
 }
 
@@ -135,12 +135,12 @@ export function printStartupBanner(opts: StartupBannerOptions): void {
     : color("disabled", "yellow");
 
   const art = [
-    color("██████╗  █████╗ ██████╗ ███████╗██████╗  ██████╗██╗     ██╗██████╗ ", "cyan"),
-    color("██╔══██╗██╔══██╗██╔══██╗██╔════╝██╔══██╗██╔════╝██║     ██║██╔══██╗", "cyan"),
-    color("██████╔╝███████║██████╔╝█████╗  ██████╔╝██║     ██║     ██║██████╔╝", "cyan"),
-    color("██╔═══╝ ██╔══██║██╔═══╝ ██╔══╝  ██╔══██╗██║     ██║     ██║██╔═══╝ ", "cyan"),
-    color("██║     ██║  ██║██║     ███████╗██║  ██║╚██████╗███████╗██║██║     ", "cyan"),
-    color("╚═╝     ╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝ ╚═════╝╚══════╝╚═╝╚═╝     ", "cyan"),
+    color("███╗   ██╗███████╗███████╗███████╗██╗███████╗", "cyan"),
+    color("████╗  ██║██╔════╝██╔════╝██╔════╝██║██╔════╝", "cyan"),
+    color("██╔██╗ ██║█████╗  ███████╗███████╗██║█████╗  ", "cyan"),
+    color("██║╚██╗██║██╔══╝  ╚════██║╚════██║██║██╔══╝  ", "cyan"),
+    color("██║ ╚████║███████╗███████║███████║██║███████╗", "cyan"),
+    color("╚═╝  ╚═══╝╚══════╝╚══════╝╚══════╝╚═╝╚══════╝", "cyan"),
   ];
 
   const lines = [
