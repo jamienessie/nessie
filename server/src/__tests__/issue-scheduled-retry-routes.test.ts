@@ -15,7 +15,7 @@ import {
   issueRelations,
   issueTreeHolds,
   issues,
-} from "@paperclipai/db";
+} from "@nessie/db";
 import {
   getEmbeddedPostgresTestSupport,
   startEmbeddedPostgresTestDatabase,

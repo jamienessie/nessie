@@ -1,13 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useQueryClient } from "@tanstack/react-query";
-import type { AdapterConfigSchema, CreateConfigValues } from "@paperclipai/adapter-utils";
-import { parseAcpxStdoutLine } from "@paperclipai/adapter-acpx-local/ui";
+import type { AdapterConfigSchema, CreateConfigValues } from "@nessie/adapter-utils";
+import { parseAcpxStdoutLine } from "@nessie/adapter-acpx-local/ui";
 import type {
   Agent,
   AgentSkillSnapshot,
   CompanySkillListItem,
-} from "@paperclipai/shared";
+} from "@nessie/shared";
 import { SchemaConfigFields } from "@/adapters/schema-config-fields";
 import type { TranscriptEntry } from "@/adapters";
 import { RunTranscriptView } from "@/components/transcript/RunTranscriptView";

@@ -1,4 +1,4 @@
-import { redactCommandText } from "@paperclipai/adapter-utils";
+import { redactCommandText } from "@nessie/adapter-utils";
 
 const SECRET_PAYLOAD_KEY_RE =
   /(api[-_]?key|access[-_]?token|auth(?:_?token)?|authorization|bearer|secret|passwd|password|credential|jwt|private[-_]?key|cookie|connectionstring)/i;

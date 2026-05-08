@@ -14,12 +14,12 @@ const lockPollMs = 100;
 
 const buildTargets = [
   {
-    name: "@paperclipai/shared",
+    name: "@nessie/shared",
     output: path.join(rootDir, "packages/shared/dist/index.js"),
     tsconfig: path.join(rootDir, "packages/shared/tsconfig.json"),
   },
   {
-    name: "@paperclipai/plugin-sdk",
+    name: "@nessie/plugin-sdk",
     output: path.join(rootDir, "packages/plugins/sdk/dist/index.js"),
     tsconfig: path.join(rootDir, "packages/plugins/sdk/tsconfig.json"),
   },

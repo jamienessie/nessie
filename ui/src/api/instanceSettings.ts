@@ -4,7 +4,7 @@ import type {
   IssueGraphLivenessAutoRecoveryPreview,
   PatchInstanceGeneralSettings,
   PatchInstanceExperimentalSettings,
-} from "@paperclipai/shared";
+} from "@nessie/shared";
 import { api } from "./client";
 
 export const instanceSettingsApi = {

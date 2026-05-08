@@ -4,9 +4,9 @@ import test from "node:test";
 import { parseArgs, resolveTargetPackage } from "./bootstrap-npm-package.mjs";
 
 test("parseArgs recognizes publish and skip-build flags", () => {
-  assert.deepEqual(parseArgs(["@paperclipai/adapter-acpx-local", "--publish", "--skip-build"]), {
+  assert.deepEqual(parseArgs(["@nessie/adapter-acpx-local", "--publish", "--skip-build"]), {
     help: false,
-    selector: "@paperclipai/adapter-acpx-local",
+    selector: "@nessie/adapter-acpx-local",
     publish: true,
     skipBuild: true,
     otp: null,
@@ -45,10 +45,10 @@ test("parseArgs returns help mode", () => {
 
 test("resolveTargetPackage matches by package name or dir", () => {
   const packages = [
-    { dir: "packages/a", name: "@paperclipai/a", pkg: {} },
-    { dir: "packages/b", name: "@paperclipai/b", pkg: {} },
+    { dir: "packages/a", name: "@nessie/a", pkg: {} },
+    { dir: "packages/b", name: "@nessie/b", pkg: {} },
   ];
 
-  assert.equal(resolveTargetPackage("@paperclipai/a", packages).dir, "packages/a");
-  assert.equal(resolveTargetPackage("./packages/b", packages).name, "@paperclipai/b");
+  assert.equal(resolveTargetPackage("@nessie/a", packages).dir, "packages/a");
+  assert.equal(resolveTargetPackage("./packages/b", packages).name, "@nessie/b");
 });

@@ -1,4 +1,4 @@
-# @paperclipai/adapter-utils
+# @nessie/adapter-utils
 
 ## 0.3.1
 

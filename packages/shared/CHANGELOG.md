@@ -1,4 +1,4 @@
-# @paperclipai/shared
+# @nessie/shared
 
 ## 0.3.1
 

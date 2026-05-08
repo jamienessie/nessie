@@ -6,7 +6,7 @@ import type {
   RoutineRevision,
   RoutineRevisionSnapshotTriggerV1,
   RoutineVariable,
-} from "@paperclipai/shared";
+} from "@nessie/shared";
 import {
   routinesApi,
   type RestoreRoutineRevisionResponse,

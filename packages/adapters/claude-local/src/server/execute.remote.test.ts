@@ -40,9 +40,9 @@ const {
   })),
 }));
 
-vi.mock("@paperclipai/adapter-utils/server-utils", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/adapter-utils/server-utils")>(
-    "@paperclipai/adapter-utils/server-utils",
+vi.mock("@nessie/adapter-utils/server-utils", async () => {
+  const actual = await vi.importActual<typeof import("@nessie/adapter-utils/server-utils")>(
+    "@nessie/adapter-utils/server-utils",
   );
   return {
     ...actual,
@@ -52,9 +52,9 @@ vi.mock("@paperclipai/adapter-utils/server-utils", async () => {
   };
 });
 
-vi.mock("@paperclipai/adapter-utils/ssh", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/adapter-utils/ssh")>(
-    "@paperclipai/adapter-utils/ssh",
+vi.mock("@nessie/adapter-utils/ssh", async () => {
+  const actual = await vi.importActual<typeof import("@nessie/adapter-utils/ssh")>(
+    "@nessie/adapter-utils/ssh",
   );
   return {
     ...actual,
@@ -64,9 +64,9 @@ vi.mock("@paperclipai/adapter-utils/ssh", async () => {
   };
 });
 
-vi.mock("@paperclipai/adapter-utils/execution-target", async () => {
-  const actual = await vi.importActual<typeof import("@paperclipai/adapter-utils/execution-target")>(
-    "@paperclipai/adapter-utils/execution-target",
+vi.mock("@nessie/adapter-utils/execution-target", async () => {
+  const actual = await vi.importActual<typeof import("@nessie/adapter-utils/execution-target")>(
+    "@nessie/adapter-utils/execution-target",
   );
   return {
     ...actual,

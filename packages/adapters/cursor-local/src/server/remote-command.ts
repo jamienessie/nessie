@@ -2,8 +2,8 @@ import path from "node:path";
 import {
   runAdapterExecutionTargetShellCommand,
   type AdapterExecutionTarget,
-} from "@paperclipai/adapter-utils/execution-target";
-import { ensurePathInEnv } from "@paperclipai/adapter-utils/server-utils";
+} from "@nessie/adapter-utils/execution-target";
+import { ensurePathInEnv } from "@nessie/adapter-utils/server-utils";
 
 const DEFAULT_CURSOR_COMMAND_BASENAMES = new Set(["agent", "cursor-agent"]);
 

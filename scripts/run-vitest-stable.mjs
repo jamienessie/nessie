@@ -8,13 +8,13 @@ const repoRoot = process.cwd();
 const serverRoot = path.join(repoRoot, "server");
 const serverTestsDir = path.join(repoRoot, "server", "src", "__tests__");
 const nonServerProjects = [
-  "@paperclipai/shared",
-  "@paperclipai/db",
-  "@paperclipai/adapter-utils",
-  "@paperclipai/adapter-acpx-local",
-  "@paperclipai/adapter-codex-local",
-  "@paperclipai/adapter-opencode-local",
-  "@paperclipai/ui",
+  "@nessie/shared",
+  "@nessie/db",
+  "@nessie/adapter-utils",
+  "@nessie/adapter-acpx-local",
+  "@nessie/adapter-codex-local",
+  "@nessie/adapter-opencode-local",
+  "@nessie/ui",
   "paperclipai",
 ];
 const routeTestPattern = /[^/]*(?:route|routes|authz)[^/]*\.test\.ts$/;
@@ -237,7 +237,7 @@ function runGeneralSuites(routeTests) {
   }
 
   runVitest(
-    ["--project", "@paperclipai/server", ...excludeRouteArgs],
+    ["--project", "@nessie/server", ...excludeRouteArgs],
     `server suites excluding ${routeTests.length} serialized suites`,
   );
 }
@@ -252,7 +252,7 @@ function runSerializedSuites(routeTests, shardIndex, shardCount) {
     runVitest(
       [
         "--project",
-        "@paperclipai/server",
+        "@nessie/server",
         routeTest.repoPath,
         "--pool=forks",
         "--poolOptions.forks.isolate=true",

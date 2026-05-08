@@ -37,8 +37,8 @@ import type {
   Agent,
   Goal,
   PluginLocalFolderDeclaration,
-} from "@paperclipai/shared";
-export type { PluginLauncherRenderContextSnapshot } from "@paperclipai/shared";
+} from "@nessie/shared";
+export type { PluginLauncherRenderContextSnapshot } from "@nessie/shared";
 
 import type {
   PluginEvent,

@@ -14,7 +14,7 @@ It is intentionally narrower than [PLUGIN_SPEC.md](./PLUGIN_SPEC.md). The spec i
 - Plugin-owned JSON API routes must be declared in the manifest and are mounted
   only under `/api/plugins/:pluginId/api/*`.
 - The host provides a small shared React component kit through
-  `@paperclipai/plugin-sdk/ui`; use it for common Paperclip controls before
+  `@nessie/plugin-sdk/ui`; use it for common Paperclip controls before
   building custom versions.
 - `ctx.assets` is not supported in the current runtime.
 
@@ -23,14 +23,14 @@ It is intentionally narrower than [PLUGIN_SPEC.md](./PLUGIN_SPEC.md). The spec i
 Use the scaffold package:
 
 ```bash
-pnpm --filter @paperclipai/create-paperclip-plugin build
+pnpm --filter @nessie/create-paperclip-plugin build
 node packages/plugins/create-paperclip-plugin/dist/index.js @yourscope/plugin-name --output ./packages/plugins/examples
 ```
 
 For a plugin that lives outside the Paperclip repo:
 
 ```bash
-pnpm --filter @paperclipai/create-paperclip-plugin build
+pnpm --filter @nessie/create-paperclip-plugin build
 node packages/plugins/create-paperclip-plugin/dist/index.js @yourscope/plugin-name \
   --output /absolute/path/to/plugin-repos \
   --sdk-path /absolute/path/to/paperclip/packages/plugins/sdk
@@ -45,9 +45,9 @@ That creates a package with:
 - `esbuild.config.mjs`
 - `rollup.config.mjs`
 
-Inside this monorepo, the scaffold uses `workspace:*` for `@paperclipai/plugin-sdk`.
+Inside this monorepo, the scaffold uses `workspace:*` for `@nessie/plugin-sdk`.
 
-Outside this monorepo, the scaffold snapshots `@paperclipai/plugin-sdk` from the local Paperclip checkout into a `.paperclip-sdk/` tarball so you can build and test a plugin without publishing anything to npm first.
+Outside this monorepo, the scaffold snapshots `@nessie/plugin-sdk` from the local Paperclip checkout into a `.paperclip-sdk/` tarball so you can build and test a plugin without publishing anything to npm first.
 
 ## Recommended local workflow
 
@@ -187,7 +187,7 @@ routine; if a ref is still missing, the routine resolution reports
 `missing_refs` instead of guessing.
 
 ```ts
-import type { PaperclipPluginManifestV1 } from "@paperclipai/plugin-sdk";
+import type { PaperclipPluginManifestV1 } from "@nessie/plugin-sdk";
 
 const manifest: PaperclipPluginManifestV1 = {
   id: "example.research-plugin",
@@ -266,7 +266,7 @@ In the worker, expose a small setup action or settings-page action that
 reconciles the resources for the selected company:
 
 ```ts
-import { definePlugin } from "@paperclipai/plugin-sdk";
+import { definePlugin } from "@nessie/plugin-sdk";
 
 export default definePlugin({
   setup(ctx) {
@@ -308,7 +308,7 @@ UI:
 - `usePluginStream`
 - `usePluginToast`
 - `useHostContext`
-- typed slot props from `@paperclipai/plugin-sdk/ui`
+- typed slot props from `@nessie/plugin-sdk/ui`
 
 Mount surfaces currently wired in the host include:
 
@@ -328,7 +328,7 @@ Mount surfaces currently wired in the host include:
 
 ## Shared host components
 
-Use shared components from `@paperclipai/plugin-sdk/ui` when the plugin needs a
+Use shared components from `@nessie/plugin-sdk/ui` when the plugin needs a
 Paperclip-native control. The host owns the implementation, so plugins inherit
 the board's current styling, ordering, recent selections, and dark-mode behavior
 without importing `ui/src` internals.
@@ -345,7 +345,7 @@ Currently exposed components include:
 - `ManagedRoutinesList` for plugin-owned routine settings pages.
 
 ```tsx
-import { AssigneePicker, ProjectPicker } from "@paperclipai/plugin-sdk/ui";
+import { AssigneePicker, ProjectPicker } from "@nessie/plugin-sdk/ui";
 
 export function PluginAssignmentControls({ companyId }: { companyId: string }) {
   const [assignee, setAssignee] = useState("");
@@ -377,7 +377,7 @@ data the plugin actually has.
 
 ### When to use the shared `FileTree`
 
-Use `FileTree` from `@paperclipai/plugin-sdk/ui` whenever the plugin only needs
+Use `FileTree` from `@nessie/plugin-sdk/ui` whenever the plugin only needs
 to render a serializable file/directory list and react to selection or
 expand/collapse. The host owns the implementation, so plugin UI inherits the
 board's icons, indent, focus ring, and dark-mode styling without importing host
@@ -387,7 +387,7 @@ internals.
 import {
   FileTree,
   type FileTreeNode,
-} from "@paperclipai/plugin-sdk/ui";
+} from "@nessie/plugin-sdk/ui";
 
 const nodes: FileTreeNode[] = [
   { name: "AGENTS.md", path: "AGENTS.md", kind: "file", children: [] },

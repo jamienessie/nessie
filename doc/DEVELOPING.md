@@ -54,7 +54,7 @@ pnpm storybook
 pnpm build-storybook
 ```
 
-These run the `@paperclipai/ui` Storybook on port `6006` and build the static output to `ui/storybook-static/`.
+These run the `@nessie/ui` Storybook on port `6006` and build the static output to `ui/storybook-static/`.
 
 Inspect or stop the current repo's managed dev runner:
 

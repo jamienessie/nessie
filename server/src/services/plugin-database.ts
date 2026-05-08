@@ -3,17 +3,17 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@nessie/db";
 import {
   pluginDatabaseNamespaces,
   pluginMigrations,
   plugins,
-} from "@paperclipai/db";
+} from "@nessie/db";
 import type {
   PaperclipPluginManifestV1,
   PluginDatabaseCoreReadTable,
   PluginMigrationRecord,
-} from "@paperclipai/shared";
+} from "@nessie/shared";
 
 const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const MAX_POSTGRES_IDENTIFIER_LENGTH = 63;

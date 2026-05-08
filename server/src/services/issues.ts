@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { and, asc, desc, eq, gt, inArray, isNull, like, lt, ne, notInArray, or, sql } from "drizzle-orm";
-import type { Db } from "@paperclipai/db";
+import type { Db } from "@nessie/db";
 import {
   activityLog,
   agentWakeupRequests,
@@ -26,7 +26,7 @@ import {
   labels,
   projectWorkspaces,
   projects,
-} from "@paperclipai/db";
+} from "@nessie/db";
 import type {
   IssueCommentAuthorType,
   IssueCommentMetadata,
@@ -35,7 +35,7 @@ import type {
   IssueProductivityReview,
   IssueProductivityReviewTrigger,
   IssueRelationIssueSummary,
-} from "@paperclipai/shared";
+} from "@nessie/shared";
 import {
   clampIssueRequestDepth,
   extractAgentMentionIds,
@@ -45,7 +45,7 @@ import {
   issueCommentPresentationSchema,
   isUuidLike,
   normalizeIssueIdentifier as normalizeIssueReferenceIdentifier,
-} from "@paperclipai/shared";
+} from "@nessie/shared";
 import { conflict, notFound, unprocessable } from "../errors.js";
 import { parseObject } from "../adapters/utils.js";
 import {
