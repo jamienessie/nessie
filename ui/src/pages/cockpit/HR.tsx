@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/api/client";
 import { useCompany } from "@/context/CompanyContext";
-import { Topbar, Pulse, AgentLabel } from "@/components/cockpit";
+import { Topbar, Pulse, AgentLabel, Panel, StarBar, AvatarCircle } from "@/components/cockpit";
 
 // 5-stage kanban: Open → Sourcing → Interviewing → Trial → Recommended
 // + an unobtrusive Hired/Rejected lane summary at the bottom.
@@ -114,22 +114,89 @@ export function CockpitHR() {
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
-          {templates.map((t) => (
-            <div key={t.key} className="hr-card" style={{
-              ["--accent" as string]: t.tier === "T1" ? "var(--t1)" : t.tier === "T3" ? "var(--t3)" : "var(--t2)",
-            } as React.CSSProperties}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                <AgentLabel
-                  humanFirstName={t.defaultFirstName}
-                  humanLastName={t.defaultLastName}
-                  title={t.title}
-                />
-                <span className={`tier t-${t.tier}`}>{t.tier}</span>
+          {templates.map((t) => {
+            const accent = t.tier === "T1" ? "var(--t1)" : t.tier === "T3" ? "var(--t3)" : "var(--t2)";
+            return (
+              <div key={t.key} className="hr-card" style={{ ["--accent" as string]: accent } as React.CSSProperties}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <AvatarCircle
+                    firstName={t.defaultFirstName}
+                    lastName={t.defaultLastName}
+                    accent={accent}
+                    size={32}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <AgentLabel
+                      humanFirstName={t.defaultFirstName}
+                      humanLastName={t.defaultLastName}
+                      title={t.title}
+                    />
+                    <div className="meta">{t.key} · {t.departmentKey}</div>
+                  </div>
+                  <span className={`tier t-${t.tier}`}>{t.tier}</span>
+                </div>
+                <div className="pitch">{t.pitch}</div>
               </div>
-              <div className="meta">{t.key} · {t.departmentKey}</div>
-              <div className="pitch">{t.pitch}</div>
+            );
+          })}
+        </div>
+
+        {/* Phase 9.4 — sample scorecard panel + hire packet panel.
+            Currently uses a fixed example rubric so the design renders
+            even with no live candidates. Wire to a real candidate's
+            latest scorecard via /api/candidates/:id/scorecards. */}
+        <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 12, marginTop: 32 }}>
+          <Panel
+            label={<><Pulse color="var(--d-eng)" /> <b>Trial scorecard · sample rubric</b></>}
+            accent="var(--d-eng)"
+            glow
+          >
+            <div className="kv-list">
+              {[
+                { criterion: "Code quality", note: "Clean, testable", score: 4 },
+                { criterion: "Speed", note: "Closed in 2 turns", score: 5 },
+                { criterion: "Cost discipline", note: "Within T3 budget", score: 4 },
+                { criterion: "Communication", note: "Asked one good clarification", score: 3 },
+                { criterion: "Evidence quality", note: "Linked diff + test run", score: 4 },
+              ].map((row) => (
+                <div key={row.criterion} className="row">
+                  <span>
+                    <span style={{ color: "var(--ink)", fontWeight: 500 }}>{row.criterion}</span>
+                    <div className="meta" style={{ color: "var(--mute)", fontFamily: "Geist Mono, monospace", fontSize: 11 }}>{row.note}</div>
+                  </span>
+                  <b><StarBar score={row.score} accent="var(--d-eng)" width={100} /></b>
+                </div>
+              ))}
             </div>
-          ))}
+          </Panel>
+
+          <Panel
+            label={<><Pulse color="var(--gold)" /> <b>Hire packet · proposed</b></>}
+            accent="var(--gold)"
+          >
+            <div style={{ padding: 16, display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <AvatarCircle firstName="J" lastName="B" accent="var(--gold)" size={48} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: "Geist Mono, monospace", fontSize: 11, color: "var(--mute)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  candidate · proposed
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: "var(--ink)", marginTop: 2 }}>
+                  Jules Bernard <span style={{ color: "var(--mute)" }}>· Software Engineer</span>
+                </div>
+                <div className="kv-list" style={{ paddingTop: 12, padding: 0, marginTop: 10 }}>
+                  {[
+                    ["role", "eng.ic"], ["tier", "T3"], ["autonomy", "L1"],
+                    ["budget", "$10/mo"], ["skills", "openai_compatible"], ["probation", "10 runs"],
+                  ].map(([k, v]) => (
+                    <div key={k} className="row">
+                      <span>{k}</span>
+                      <b>{v}</b>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Panel>
         </div>
       </main>
     </>

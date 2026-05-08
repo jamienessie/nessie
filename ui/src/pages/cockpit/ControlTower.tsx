@@ -1,6 +1,39 @@
 import { useEffect, useState } from "react";
 import { api } from "@/api/client";
-import { Topbar, Panel, Pulse, KvList, BurnBar, type TopbarTierState } from "@/components/cockpit";
+import { Topbar, Panel, Pulse, KvList, type TopbarTierState } from "@/components/cockpit";
+
+// Phase 9.3 — segmented spend gauge: 4 segments T1/T2/T3/headroom
+// with white-25% inset glow per segment, matching the cockpit
+// reference. Replaces the single-bar BurnBar in the Spend Today
+// panel.
+function SegmentedSpendGauge({
+  cap, t1, t2, t3,
+}: { cap: number; t1: number; t2: number; t3: number }) {
+  const total = Math.max(0, t1 + t2 + t3);
+  const safeCap = Math.max(cap, total + 1);
+  const headroom = Math.max(0, safeCap - total);
+  const seg = (cents: number, color: string, key: string) => {
+    const pct = (cents / safeCap) * 100;
+    if (pct <= 0) return null;
+    return (
+      <span key={key} style={{
+        width: `${pct}%`, height: "100%", background: color,
+        boxShadow: "inset 0 0 0 1px color-mix(in oklch, white 25%, transparent)",
+      }} />
+    );
+  };
+  return (
+    <div style={{
+      display: "flex", height: 40, borderRadius: 6, overflow: "hidden",
+      background: "var(--line-soft)", border: "1px solid var(--line)",
+    }}>
+      {seg(t1, "var(--t1)", "t1")}
+      {seg(t2, "var(--t2)", "t2")}
+      {seg(t3, "var(--t3)", "t3")}
+      {seg(headroom, "var(--panel-2)", "head")}
+    </div>
+  );
+}
 
 // Cockpit Control Tower.
 //
@@ -167,7 +200,12 @@ export function ControlTower() {
                 {costs ? fmtCents(costs.total) : "—"}
               </div>
               <div style={{ marginTop: 12 }}>
-                <BurnBar fraction={costs ? Math.min(1, (costs.total ?? 0) / 10000) : 0} accent="var(--t2)" />
+                <SegmentedSpendGauge
+                  cap={10000}
+                  t1={costs?.byTier?.T1 ?? 0}
+                  t2={costs?.byTier?.T2 ?? 0}
+                  t3={costs?.byTier?.T3 ?? 0}
+                />
               </div>
               <div style={{ marginTop: 16 }}>
                 <KvList rows={[

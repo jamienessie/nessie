@@ -31,6 +31,8 @@ export function CockpitOrg() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Phase 9.6 — dept-filtered roster. Click a dept cell to focus.
+  const [focusDeptId, setFocusDeptId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedCompany?.id) return;
@@ -52,6 +54,15 @@ export function CockpitOrg() {
       cancelled = true;
     };
   }, [selectedCompany?.id]);
+
+  const focusDept = useMemo(
+    () => (focusDeptId ? departments.find((d) => d.id === focusDeptId) ?? null : null),
+    [focusDeptId, departments],
+  );
+  const filteredAgents = useMemo(
+    () => focusDeptId ? agents.filter((a) => a.departmentId === focusDeptId) : agents,
+    [focusDeptId, agents],
+  );
 
   const agentsByDept = useMemo(() => {
     const map = new Map<string, AgentRow[]>();
@@ -84,8 +95,14 @@ export function CockpitOrg() {
             const accent = d.color;
             const members = agentsByDept.get(d.id) ?? [];
             const live = members.filter((a) => a.status === "running" || a.status === "active").length;
+            const burnFraction = members.length > 0 ? Math.min(1, live / members.length) : 0;
             return (
-              <div key={d.id} className="dept-cell" style={{ ["--accent" as string]: accent } as React.CSSProperties}>
+              <div
+                key={d.id}
+                className="dept-cell"
+                style={{ ["--accent" as string]: accent, cursor: "pointer", outline: focusDeptId === d.id ? `2px solid ${accent}` : "none" } as React.CSSProperties}
+                onClick={() => setFocusDeptId(focusDeptId === d.id ? null : d.id)}
+              >
                 <div>
                   <span className="swatch" />
                   <span className="name">{d.name}</span>
@@ -105,21 +122,53 @@ export function CockpitOrg() {
                     <div className="mono" style={{ fontSize: 18, color: accent }}>{d.defaultPreferredTier}</div>
                   </div>
                 </div>
+                {/* Phase 9.6 — gate pills + bottom burn bar. */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 10 }}>
+                  {(["evidence", "review", "policy"]).map((g) => (
+                    <span
+                      key={g}
+                      style={{
+                        fontFamily: "Geist Mono, monospace", fontSize: 9, letterSpacing: "0.1em",
+                        textTransform: "uppercase", padding: "2px 6px", borderRadius: 4,
+                        background: `color-mix(in oklch, ${accent} 14%, transparent)`,
+                        color: accent,
+                        border: `1px solid color-mix(in oklch, ${accent} 30%, transparent)`,
+                      }}
+                    >
+                      {g}
+                    </span>
+                  ))}
+                </div>
+                <div className="burn-bar" style={{ marginTop: 12, ["--accent" as string]: accent } as React.CSSProperties}>
+                  <i style={{ width: `${burnFraction * 100}%` }} />
+                </div>
               </div>
             );
           })}
         </div>
 
         <Panel
-          label={<><Pulse color="var(--d-eng)" /> <b>Agent roster</b></>}
-          accent="var(--d-eng)"
+          label={<>
+            <Pulse color={focusDept?.color ?? "var(--d-eng)"} />
+            <b>{focusDept ? `${focusDept.name} roster` : "Agent roster (all departments)"}</b>
+            {focusDept ? (
+              <button
+                onClick={() => setFocusDeptId(null)}
+                className="mono"
+                style={{ marginLeft: "auto", background: "transparent", border: "1px solid var(--line)", color: "var(--mute)", padding: "2px 8px", borderRadius: 4, cursor: "pointer", fontSize: 10 }}
+              >
+                clear
+              </button>
+            ) : null}
+          </>}
+          accent={focusDept?.color ?? "var(--d-eng)"}
           style={{ marginTop: 24 }}
         >
-          {agents.length === 0 ? (
-            <div className="cockpit-empty"><b>No agents on the roster yet.</b>Hire from a role template in /hr.</div>
+          {filteredAgents.length === 0 ? (
+            <div className="cockpit-empty"><b>No agents{focusDept ? ` in ${focusDept.name}` : " on the roster"} yet.</b>Hire from a role template in /hr.</div>
           ) : (
             <div className="kv-list">
-              {agents.map((a) => (
+              {filteredAgents.map((a) => (
                 <div key={a.id} className="row">
                   <span style={{ color: "var(--ink)" }}>
                     <AgentLabel
@@ -130,10 +179,19 @@ export function CockpitOrg() {
                       status={a.status === "paused" ? "paused" : null}
                     />
                   </span>
-                  <b>
+                  <b style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
                     {a.tier ? <span className={`tier t-${a.tier}`}>{a.tier}</span> : <span className="mute">no tier</span>}
-                    {" · L"}{a.autonomyLevel ?? 1}
-                    {" · rep "}{a.reputationScore ?? 50}
+                    <span className="mono" style={{ fontSize: 11, color: "var(--mute)" }}>L{a.autonomyLevel ?? 1}</span>
+                    {/* Phase 9.6 — rep color thresholds: <50 warn, <80 gold, ≥80 t3. */}
+                    <span className="mono" style={{
+                      fontSize: 11,
+                      color: (a.reputationScore ?? 50) < 50 ? "var(--warn)"
+                        : (a.reputationScore ?? 50) < 80 ? "var(--gold)"
+                        : "var(--t3)",
+                      fontWeight: 600,
+                    }}>
+                      rep {a.reputationScore ?? 50}
+                    </span>
                   </b>
                 </div>
               ))}

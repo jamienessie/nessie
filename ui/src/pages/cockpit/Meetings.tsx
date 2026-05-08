@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Topbar, Panel, Pulse, AgentLabel } from "@/components/cockpit";
+import { Topbar, Panel, Pulse, AgentLabel, AvatarCircle, TierBadge } from "@/components/cockpit";
 import { api } from "@/api/client";
 import { useCompany } from "@/context/CompanyContext";
 
@@ -22,11 +22,23 @@ type Participant = {
   role: string;
 };
 
+type Message = {
+  id: string;
+  meetingId: string;
+  agentId: string | null;
+  turnIndex: number;
+  role: "agent" | "operator" | "system" | "tool";
+  bodyMarkdown: string;
+  costCents: number;
+  createdAt: string;
+};
+
 export function CockpitMeetings() {
   const { selectedCompany } = useCompany();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,12 +66,18 @@ export function CockpitMeetings() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await api.get<{ meeting: Meeting; participants: Participant[] }>(
+        const res = await api.get<{ meeting: Meeting; participants: Participant[]; messages: Message[] }>(
           `/meetings/${activeId}?companyId=${encodeURIComponent(selectedCompany.id)}`,
         );
-        if (!cancelled) setParticipants(res.participants ?? []);
+        if (!cancelled) {
+          setParticipants(res.participants ?? []);
+          setMessages(res.messages ?? []);
+        }
       } catch {
-        if (!cancelled) setParticipants([]);
+        if (!cancelled) {
+          setParticipants([]);
+          setMessages([]);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -130,8 +148,49 @@ export function CockpitMeetings() {
                     )}
                   </ul>
                 </div>
-                <div className="cockpit-empty" style={{ marginTop: 16 }}>
-                  <b>Live transcript lands in Phase 6.</b>For now, append messages via POST /api/meetings/:id/messages.
+                {/* Phase 9.5 — transcript renderer. Avatar circle in
+                    dept color, meta line (name + tier + role + ts),
+                    body in 13.5px Geist. */}
+                <div style={{ marginTop: 20 }}>
+                  <div className="mono" style={{ color: "var(--mute)", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+                    Transcript ({messages.length})
+                  </div>
+                  {messages.length === 0 ? (
+                    <div className="cockpit-empty">
+                      <b>No messages yet.</b>Append via POST /api/meetings/:id/messages.
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {messages.map((m) => {
+                        const accent = m.role === "operator" ? "var(--gold)"
+                          : m.role === "system" ? "var(--mute)"
+                          : m.role === "tool" ? "var(--t3)"
+                          : "var(--d-eng)";
+                        const fallback = m.role === "operator" ? "Operator"
+                          : m.role === "system" ? "System"
+                          : m.role === "tool" ? "Tool"
+                          : `agent ${(m.agentId ?? "—").slice(0, 8)}`;
+                        return (
+                          <div key={m.id} style={{ display: "grid", gridTemplateColumns: "36px 1fr", gap: 12, alignItems: "flex-start" }}>
+                            <AvatarCircle fallback={fallback} accent={accent} size={36} />
+                            <div style={{ minWidth: 0 }}>
+                              <div className="mono" style={{ fontSize: 11, color: "var(--mute)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                                <span style={{ color: "var(--ink)", fontWeight: 600 }}>{fallback}</span>
+                                <TierBadge tier={null}>{m.role.toUpperCase()}</TierBadge>
+                                <span>turn {m.turnIndex}</span>
+                                <span>·</span>
+                                <span>{new Date(m.createdAt).toLocaleTimeString()}</span>
+                                {m.costCents > 0 ? <span>· ${(m.costCents / 100).toFixed(2)}</span> : null}
+                              </div>
+                              <div style={{ fontSize: 13.5, lineHeight: 1.4, color: "var(--ink)", marginTop: 4, whiteSpace: "pre-wrap" }}>
+                                {m.bodyMarkdown}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
