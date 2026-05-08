@@ -6,18 +6,6 @@ import type {
 } from "./types.js";
 import { getAdapterSessionManagement } from "@nessie/adapter-utils";
 import {
-  execute as acpxExecute,
-  testEnvironment as acpxTestEnvironment,
-  sessionCodec as acpxSessionCodec,
-  getConfigSchema as getAcpxConfigSchema,
-  listAcpxSkills,
-  syncAcpxSkills,
-} from "@nessie/adapter-acpx-local/server";
-import {
-  agentConfigurationDoc as acpxAgentConfigurationDoc,
-  models as acpxModels,
-} from "@nessie/adapter-acpx-local";
-import {
   execute as claudeExecute,
   listClaudeSkills,
   syncClaudeSkills,
@@ -45,76 +33,25 @@ import {
   modelProfiles as codexModelProfiles,
 } from "@nessie/adapter-codex-local";
 import {
-  execute as cursorExecute,
-  listCursorSkills,
-  syncCursorSkills,
-  testEnvironment as cursorTestEnvironment,
-  sessionCodec as cursorSessionCodec,
-} from "@nessie/adapter-cursor-local/server";
+  execute as openAiCompatibleExecute,
+  testEnvironment as openAiCompatibleTestEnvironment,
+  sessionCodec as openAiCompatibleSessionCodec,
+} from "@nessie/adapter-openai-compatible/server";
 import {
-  agentConfigurationDoc as cursorAgentConfigurationDoc,
-  models as cursorModels,
-  modelProfiles as cursorModelProfiles,
-} from "@nessie/adapter-cursor-local";
+  agentConfigurationDoc as openAiCompatibleAgentConfigurationDoc,
+  models as openAiCompatibleModels,
+  modelProfiles as openAiCompatibleModelProfiles,
+} from "@nessie/adapter-openai-compatible";
 import {
-  execute as geminiExecute,
-  listGeminiSkills,
-  syncGeminiSkills,
-  testEnvironment as geminiTestEnvironment,
-  sessionCodec as geminiSessionCodec,
-} from "@nessie/adapter-gemini-local/server";
+  execute as httpWebhookExecute,
+  testEnvironment as httpWebhookTestEnvironment,
+  sessionCodec as httpWebhookSessionCodec,
+} from "@nessie/adapter-http-webhook/server";
 import {
-  agentConfigurationDoc as geminiAgentConfigurationDoc,
-  models as geminiModels,
-  modelProfiles as geminiModelProfiles,
-} from "@nessie/adapter-gemini-local";
-import {
-  execute as openCodeExecute,
-  listOpenCodeSkills,
-  syncOpenCodeSkills,
-  testEnvironment as openCodeTestEnvironment,
-  sessionCodec as openCodeSessionCodec,
-  listOpenCodeModels,
-} from "@nessie/adapter-opencode-local/server";
-import {
-  agentConfigurationDoc as openCodeAgentConfigurationDoc,
-  models as openCodeModels,
-  modelProfiles as openCodeModelProfiles,
-} from "@nessie/adapter-opencode-local";
-import {
-  execute as openclawGatewayExecute,
-  testEnvironment as openclawGatewayTestEnvironment,
-} from "@nessie/adapter-openclaw-gateway/server";
-import {
-  agentConfigurationDoc as openclawGatewayAgentConfigurationDoc,
-  models as openclawGatewayModels,
-} from "@nessie/adapter-openclaw-gateway";
+  agentConfigurationDoc as httpWebhookAgentConfigurationDoc,
+  models as httpWebhookModels,
+} from "@nessie/adapter-http-webhook";
 import { listCodexModels, refreshCodexModels } from "./codex-models.js";
-import { listCursorModels } from "./cursor-models.js";
-import {
-  execute as piExecute,
-  listPiSkills,
-  syncPiSkills,
-  testEnvironment as piTestEnvironment,
-  sessionCodec as piSessionCodec,
-  listPiModels,
-} from "@nessie/adapter-pi-local/server";
-import {
-  agentConfigurationDoc as piAgentConfigurationDoc,
-  modelProfiles as piModelProfiles,
-} from "@nessie/adapter-pi-local";
-import {
-  execute as hermesExecute,
-  testEnvironment as hermesTestEnvironment,
-  sessionCodec as hermesSessionCodec,
-  listSkills as hermesListSkills,
-  syncSkills as hermesSyncSkills,
-  detectModel as detectModelFromHermes,
-} from "hermes-paperclip-adapter/server";
-import {
-  agentConfigurationDoc as hermesAgentConfigurationDoc,
-  models as hermesModels,
-} from "hermes-paperclip-adapter";
 import { BUILTIN_ADAPTER_TYPES } from "./builtin-adapter-types.js";
 import { buildExternalAdapters } from "./plugin-loader.js";
 import { getDisabledAdapterTypes } from "../services/adapter-plugin-store.js";
@@ -150,78 +87,6 @@ function buildNpmRuntimeCommandSpec(
   };
 }
 
-function buildCursorRuntimeCommandSpec(config: Record<string, unknown>): AdapterRuntimeCommandSpec {
-  const command = readConfiguredCommand(config, "agent");
-  return {
-    command,
-    detectCommand: command,
-    installCommand: null,
-  };
-}
-
-function normalizeHermesConfig<T extends { config?: unknown; agent?: unknown }>(ctx: T): T {
-  const config =
-    ctx && typeof ctx === "object" && "config" in ctx && ctx.config && typeof ctx.config === "object"
-      ? (ctx.config as Record<string, unknown>)
-      : null;
-  const agent =
-    ctx && typeof ctx === "object" && "agent" in ctx && ctx.agent && typeof ctx.agent === "object"
-      ? (ctx.agent as Record<string, unknown>)
-      : null;
-  const agentAdapterConfig =
-    agent?.adapterConfig && typeof agent.adapterConfig === "object"
-      ? (agent.adapterConfig as Record<string, unknown>)
-      : null;
-
-  const configCommand =
-    typeof config?.command === "string" && config.command.length > 0 ? config.command : undefined;
-  const agentCommand =
-    typeof agentAdapterConfig?.command === "string" && agentAdapterConfig.command.length > 0
-      ? agentAdapterConfig.command
-      : undefined;
-
-  if (config && !config.hermesCommand && configCommand) {
-    config.hermesCommand = configCommand;
-  }
-  if (agentAdapterConfig && !agentAdapterConfig.hermesCommand && agentCommand) {
-    agentAdapterConfig.hermesCommand = agentCommand;
-  }
-
-  return ctx;
-}
-
-function dedupeAdapterModels(models: AdapterModel[]): AdapterModel[] {
-  const seen = new Set<string>();
-  const result: AdapterModel[] = [];
-  for (const model of models) {
-    const id = model.id.trim();
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    result.push({ ...model, id });
-  }
-  return result;
-}
-
-function prefixAdapterModelLabels(models: AdapterModel[], provider: "Claude" | "Codex"): AdapterModel[] {
-  const prefix = `${provider}: `;
-  return models.map((model) => ({
-    ...model,
-    label: model.label.startsWith(prefix) ? model.label : `${prefix}${model.label}`,
-  }));
-}
-
-async function listAcpxModels(): Promise<AdapterModel[]> {
-  const [claude, codex] = await Promise.all([
-    listClaudeModels().catch(() => claudeModels),
-    listCodexModels().catch(() => codexModels),
-  ]);
-  return dedupeAdapterModels([
-    ...acpxModels,
-    ...prefixAdapterModelLabels(claude, "Claude"),
-    ...prefixAdapterModelLabels(codex, "Codex"),
-  ]);
-}
-
 const claudeLocalAdapter: ServerAdapterModule = {
   type: "claude_local",
   execute: claudeExecute,
@@ -241,27 +106,6 @@ const claudeLocalAdapter: ServerAdapterModule = {
     buildNpmRuntimeCommandSpec(config, "claude", "@anthropic-ai/claude-code"),
   agentConfigurationDoc: claudeAgentConfigurationDoc,
   getQuotaWindows: claudeGetQuotaWindows,
-};
-
-const acpxLocalAdapter: ServerAdapterModule = {
-  type: "acpx_local",
-  execute: acpxExecute,
-  testEnvironment: acpxTestEnvironment,
-  listSkills: listAcpxSkills,
-  syncSkills: syncAcpxSkills,
-  sessionCodec: acpxSessionCodec,
-  sessionManagement: getAdapterSessionManagement("acpx_local") ?? undefined,
-  models: dedupeAdapterModels([
-    ...prefixAdapterModelLabels(claudeModels, "Claude"),
-    ...prefixAdapterModelLabels(codexModels, "Codex"),
-  ]),
-  listModels: listAcpxModels,
-  supportsLocalAgentJwt: true,
-  supportsInstructionsBundle: true,
-  instructionsPathKey: "instructionsFilePath",
-  requiresMaterializedRuntimeSkills: false,
-  agentConfigurationDoc: acpxAgentConfigurationDoc,
-  getConfigSchema: getAcpxConfigSchema,
 };
 
 const codexLocalAdapter: ServerAdapterModule = {
@@ -285,158 +129,31 @@ const codexLocalAdapter: ServerAdapterModule = {
   getQuotaWindows: codexGetQuotaWindows,
 };
 
-const cursorLocalAdapter: ServerAdapterModule = {
-  type: "cursor",
-  execute: cursorExecute,
-  testEnvironment: cursorTestEnvironment,
-  listSkills: listCursorSkills,
-  syncSkills: syncCursorSkills,
-  sessionCodec: cursorSessionCodec,
-  sessionManagement: getAdapterSessionManagement("cursor") ?? undefined,
-  models: cursorModels,
-  modelProfiles: cursorModelProfiles,
-  listModels: listCursorModels,
+const openAiCompatibleAdapter: ServerAdapterModule = {
+  type: "openai_compatible",
+  execute: openAiCompatibleExecute,
+  testEnvironment: openAiCompatibleTestEnvironment,
+  sessionCodec: openAiCompatibleSessionCodec,
+  sessionManagement: getAdapterSessionManagement("openai_compatible") ?? undefined,
+  models: openAiCompatibleModels,
+  modelProfiles: openAiCompatibleModelProfiles,
   supportsLocalAgentJwt: true,
-  supportsInstructionsBundle: true,
-  instructionsPathKey: "instructionsFilePath",
-  requiresMaterializedRuntimeSkills: true,
-  getRuntimeCommandSpec: buildCursorRuntimeCommandSpec,
-  agentConfigurationDoc: cursorAgentConfigurationDoc,
+  supportsInstructionsBundle: false,
+  requiresMaterializedRuntimeSkills: false,
+  agentConfigurationDoc: openAiCompatibleAgentConfigurationDoc,
 };
 
-const geminiLocalAdapter: ServerAdapterModule = {
-  type: "gemini_local",
-  execute: geminiExecute,
-  testEnvironment: geminiTestEnvironment,
-  listSkills: listGeminiSkills,
-  syncSkills: syncGeminiSkills,
-  sessionCodec: geminiSessionCodec,
-  sessionManagement: getAdapterSessionManagement("gemini_local") ?? undefined,
-  models: geminiModels,
-  modelProfiles: geminiModelProfiles,
-  supportsLocalAgentJwt: true,
-  supportsInstructionsBundle: true,
-  instructionsPathKey: "instructionsFilePath",
-  requiresMaterializedRuntimeSkills: true,
-  getRuntimeCommandSpec: (config) =>
-    buildNpmRuntimeCommandSpec(config, "gemini", "@google/gemini-cli"),
-  agentConfigurationDoc: geminiAgentConfigurationDoc,
-};
-
-const openclawGatewayAdapter: ServerAdapterModule = {
-  type: "openclaw_gateway",
-  execute: openclawGatewayExecute,
-  testEnvironment: openclawGatewayTestEnvironment,
-  models: openclawGatewayModels,
+const httpWebhookAdapter: ServerAdapterModule = {
+  type: "http_webhook",
+  execute: httpWebhookExecute,
+  testEnvironment: httpWebhookTestEnvironment,
+  sessionCodec: httpWebhookSessionCodec,
+  sessionManagement: getAdapterSessionManagement("http_webhook") ?? undefined,
+  models: httpWebhookModels,
   supportsLocalAgentJwt: false,
   supportsInstructionsBundle: false,
   requiresMaterializedRuntimeSkills: false,
-  agentConfigurationDoc: openclawGatewayAgentConfigurationDoc,
-};
-
-const openCodeLocalAdapter: ServerAdapterModule = {
-  type: "opencode_local",
-  execute: openCodeExecute,
-  testEnvironment: openCodeTestEnvironment,
-  listSkills: listOpenCodeSkills,
-  syncSkills: syncOpenCodeSkills,
-  sessionCodec: openCodeSessionCodec,
-  models: openCodeModels,
-  modelProfiles: openCodeModelProfiles,
-  sessionManagement: getAdapterSessionManagement("opencode_local") ?? undefined,
-  listModels: listOpenCodeModels,
-  supportsLocalAgentJwt: true,
-  supportsInstructionsBundle: true,
-  instructionsPathKey: "instructionsFilePath",
-  requiresMaterializedRuntimeSkills: true,
-  getRuntimeCommandSpec: (config) => buildNpmRuntimeCommandSpec(config, "opencode", "opencode-ai"),
-  agentConfigurationDoc: openCodeAgentConfigurationDoc,
-};
-
-const piLocalAdapter: ServerAdapterModule = {
-  type: "pi_local",
-  execute: piExecute,
-  testEnvironment: piTestEnvironment,
-  listSkills: listPiSkills,
-  syncSkills: syncPiSkills,
-  sessionCodec: piSessionCodec,
-  sessionManagement: getAdapterSessionManagement("pi_local") ?? undefined,
-  models: [],
-  modelProfiles: piModelProfiles,
-  listModels: listPiModels,
-  supportsLocalAgentJwt: true,
-  supportsInstructionsBundle: true,
-  instructionsPathKey: "instructionsFilePath",
-  requiresMaterializedRuntimeSkills: true,
-  getRuntimeCommandSpec: (config) =>
-    buildNpmRuntimeCommandSpec(config, "pi", "@mariozechner/pi-coding-agent"),
-  agentConfigurationDoc: piAgentConfigurationDoc,
-};
-
-// hermes-paperclip-adapter v0.2.0 predates the authToken field; cast is
-// intentional until hermes ships a matching AdapterExecutionContext type.
-const executeHermesLocal = hermesExecute as unknown as ServerAdapterModule["execute"];
-
-const hermesLocalAdapter: ServerAdapterModule = {
-  type: "hermes_local",
-  execute: async (ctx) => {
-    const normalizedCtx = normalizeHermesConfig(ctx);
-    if (!normalizedCtx.authToken) return executeHermesLocal(normalizedCtx);
-
-    const existingConfig = (normalizedCtx.agent.adapterConfig ?? {}) as Record<string, unknown>;
-    const existingEnv =
-      typeof existingConfig.env === "object" && existingConfig.env !== null && !Array.isArray(existingConfig.env)
-        ? (existingConfig.env as Record<string, string>)
-        : {};
-    const explicitApiKey =
-      typeof existingEnv.PAPERCLIP_API_KEY === "string" && existingEnv.PAPERCLIP_API_KEY.trim().length > 0;
-    const promptTemplate =
-      typeof existingConfig.promptTemplate === "string" && existingConfig.promptTemplate.trim().length > 0
-        ? existingConfig.promptTemplate
-        : "";
-    const authGuardPrompt = [
-      "Paperclip API safety rule:",
-      "Use Authorization: Bearer $PAPERCLIP_API_KEY on every Paperclip API request.",
-      "Use X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID on every Paperclip API request that writes or mutates data, including comments and issue updates.",
-      "Never use a board, browser, or local-board session for Paperclip API writes.",
-    ].join("\n");
-
-    const patchedConfig: Record<string, unknown> = {
-      ...existingConfig,
-      env: {
-        ...existingEnv,
-        ...(!explicitApiKey ? { PAPERCLIP_API_KEY: normalizedCtx.authToken } : {}),
-        PAPERCLIP_RUN_ID: normalizedCtx.runId,
-      },
-    };
-
-    // Only inject the auth guard into promptTemplate when a custom template already exists.
-    // When no custom template is set, Hermes uses its built-in default heartbeat/task prompt —
-    // overwriting it with only the auth guard text would strip the assigned issue/workflow instructions.
-    if (promptTemplate) {
-      patchedConfig.promptTemplate = `${authGuardPrompt}\n\n${promptTemplate}`;
-    }
-
-    const patchedCtx = {
-      ...normalizedCtx,
-      agent: {
-        ...normalizedCtx.agent,
-        adapterConfig: patchedConfig,
-      },
-    };
-
-    return executeHermesLocal(patchedCtx);
-  },
-  testEnvironment: (ctx) => hermesTestEnvironment(normalizeHermesConfig(ctx) as never),
-  sessionCodec: hermesSessionCodec,
-  listSkills: hermesListSkills,
-  syncSkills: hermesSyncSkills,
-  models: hermesModels,
-  supportsLocalAgentJwt: true,
-  supportsInstructionsBundle: false,
-  requiresMaterializedRuntimeSkills: false,
-  agentConfigurationDoc: hermesAgentConfigurationDoc,
-  detectModel: () => detectModelFromHermes(),
+  agentConfigurationDoc: httpWebhookAgentConfigurationDoc,
 };
 
 const adaptersByType = new Map<string, ServerAdapterModule>();
@@ -451,16 +168,15 @@ const builtinFallbacks = new Map<string, ServerAdapterModule>();
 const pausedOverrides = new Set<string>();
 
 function registerBuiltInAdapters() {
+  // Nessie Phase 1 catalog: four builtin agent adapters plus the two
+  // adapter-plugin transports (process / http). Other Paperclip adapters
+  // (cursor / gemini / opencode / acpx / pi / openclaw-gateway / hermes)
+  // remain on disk as workspace packages but are no longer registered.
   for (const adapter of [
-    acpxLocalAdapter,
     claudeLocalAdapter,
     codexLocalAdapter,
-    openCodeLocalAdapter,
-    piLocalAdapter,
-    cursorLocalAdapter,
-    geminiLocalAdapter,
-    openclawGatewayAdapter,
-    hermesLocalAdapter,
+    openAiCompatibleAdapter,
+    httpWebhookAdapter,
     processAdapter,
     httpAdapter,
   ]) {
@@ -471,16 +187,13 @@ function registerBuiltInAdapters() {
 registerBuiltInAdapters();
 
 // ---------------------------------------------------------------------------
-// Load external adapter plugins (e.g. droid_local)
+// Load external adapter plugins
 //
 // External adapter packages export createServerAdapter() which returns a
 // ServerAdapterModule. When the module provides its own sessionManagement
 // it is preserved; otherwise the host falls back to the built-in registry
 // lookup (so externals that override a built-in type inherit the builtin's
-// policy). This brings init-time registration to at-least-as-good behavior
-// as the hot-install path (routes/adapters.ts:179 -> registerServerAdapter):
-// both preserve module-provided sessionManagement, and init-time additionally
-// applies the registry fallback for externals overriding a built-in type.
+// policy).
 // ---------------------------------------------------------------------------
 
 /** Cached sync wrapper — the store is a simple JSON file read, safe to call frequently. */
@@ -492,14 +205,7 @@ function getDisabledAdapterTypesFromStore(): string[] {
  * Merge an external adapter module with host-provided session management.
  *
  * Module-provided `sessionManagement` takes precedence. When absent, fall
- * back to the hardcoded registry keyed by adapter type (so externals that
- * override a built-in — same `type` — inherit the builtin's policy). If
- * neither is available, `sessionManagement` remains `undefined`.
- *
- * Used by both the init-time IIFE below (external-adapter load pass on
- * server start) and the hot-install path in `routes/adapters.ts`
- * (`registerWithSessionManagement`), so the two load paths resolve
- * `sessionManagement` identically.
+ * back to the hardcoded registry keyed by adapter type.
  */
 export function resolveExternalAdapterRegistration(
   externalAdapter: ServerAdapterModule,
@@ -514,10 +220,8 @@ export function resolveExternalAdapterRegistration(
 }
 
 /**
- * Load external adapters from the plugin store and hardcoded sources.
- * Called once at module initialization. The promise is exported so that
- * callers (e.g. assertKnownAdapterType, app startup) can await completion
- * and avoid racing against the loading window.
+ * Load external adapters from the plugin store. Called once at module
+ * initialization.
  */
 const externalAdaptersReady: Promise<void> = (async () => {
   try {
@@ -526,9 +230,8 @@ const externalAdaptersReady: Promise<void> = (async () => {
       const overriding = BUILTIN_ADAPTER_TYPES.has(externalAdapter.type);
       if (overriding) {
         console.log(
-          `[paperclip] External adapter "${externalAdapter.type}" overrides built-in adapter`,
+          `[nessie] External adapter "${externalAdapter.type}" overrides built-in adapter`,
         );
-        // Save the original builtin for later restoration.
         const existing = adaptersByType.get(externalAdapter.type);
         if (existing && !builtinFallbacks.has(externalAdapter.type)) {
           builtinFallbacks.set(externalAdapter.type, existing);
@@ -540,16 +243,10 @@ const externalAdaptersReady: Promise<void> = (async () => {
       );
     }
   } catch (err) {
-    console.error("[paperclip] Failed to load external adapters:", err);
+    console.error("[nessie] Failed to load external adapters:", err);
   }
 })();
 
-/**
- * Await this before validating adapter types to avoid race conditions
- * during server startup. External adapters are loaded asynchronously;
- * calling assertKnownAdapterType before this resolves will reject
- * valid external adapter types.
- */
 export function waitForExternalAdapters(): Promise<void> {
   return externalAdaptersReady;
 }
@@ -664,28 +361,18 @@ export async function detectAdapterModel(
 
 /**
  * Pause or resume an external override for a builtin adapter type.
- *
- * - `paused = true`  → subsequent calls to `getServerAdapter(type)` return
- *   the builtin fallback instead of the external adapter.  Already-running
- *   agent sessions are unaffected (they hold a reference to the module they
- *   started with).
- *
- * - `paused = false` → the external adapter is active again.
- *
- * Returns `true` if the state actually changed, `false` if the type is not
- * an override or was already in the requested state.
  */
 export function setOverridePaused(type: string, paused: boolean): boolean {
   if (!builtinFallbacks.has(type)) return false;
   const wasPaused = pausedOverrides.has(type);
   if (paused && !wasPaused) {
     pausedOverrides.add(type);
-    console.log(`[paperclip] Override paused for "${type}" — builtin adapter restored`);
+    console.log(`[nessie] Override paused for "${type}" — builtin adapter restored`);
     return true;
   }
   if (!paused && wasPaused) {
     pausedOverrides.delete(type);
-    console.log(`[paperclip] Override resumed for "${type}" — external adapter active`);
+    console.log(`[nessie] Override resumed for "${type}" — external adapter active`);
     return true;
   }
   return false;
@@ -712,3 +399,8 @@ export function findActiveServerAdapter(type: string): ServerAdapterModule | nul
   }
   return adaptersByType.get(type) ?? null;
 }
+
+// AdapterModel imported but no longer referenced after the registry was
+// narrowed (acpx-local was the only consumer of dedupeAdapterModels).
+// Keeping the type import for future per-adapter helpers.
+export type { AdapterModel };

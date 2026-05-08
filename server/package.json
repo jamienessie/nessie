@@ -47,6 +47,8 @@
     "@nessie/adapter-acpx-local": "workspace:*",
     "@nessie/adapter-claude-local": "workspace:*",
     "@nessie/adapter-codex-local": "workspace:*",
+    "@nessie/adapter-http-webhook": "workspace:*",
+    "@nessie/adapter-openai-compatible": "workspace:*",
     "@nessie/adapter-cursor-local": "workspace:*",
     "@nessie/adapter-gemini-local": "workspace:*",
     "@nessie/adapter-openclaw-gateway": "workspace:*",
