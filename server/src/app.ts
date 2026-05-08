@@ -214,6 +214,9 @@ export async function createApp(
   // Phase 6: Trust layer (Agent Bus, Work Contracts, Black Box, Reputation).
   const { trustLayerRoutes } = await import("./routes/trust-layer.js");
   api.use(trustLayerRoutes(db));
+  // Phase 7 starter pack: Inbox, Operator Constitution, Trust Receipts.
+  const { v0_8Routes } = await import("./routes/v0_8.js");
+  api.use(v0_8Routes(db));
   api.use(secretRoutes(db));
   api.use(costRoutes(db, { pluginWorkerManager: workerManager }));
   api.use(activityRoutes(db));

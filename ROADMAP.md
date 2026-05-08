@@ -1,97 +1,94 @@
-# Roadmap
+# Nessie Roadmap
 
-This document expands the roadmap preview in `README.md`.
+What's shipped, what's coming, and what we deliberately deferred.
 
-Paperclip is still moving quickly. The list below is directional, not promised, and priorities may shift as we learn from users and from operating real AI companies with the product.
+## Shipped — v1 spine (Phases −1 → 6)
 
-We value community involvement and want to make sure contributor energy goes toward areas where it can land.
+| Phase | What landed |
+| --- | --- |
+| **−1** | Fork from `paperclipai/paperclip @ 824298f`. Namespace flip `@paperclipai/*` → `@nessie/*`. Soft-stripped multi-user, telemetry, cloud sandbox. Plugins gated off. Branding (NESSIE banner, `N` favicon). Data dir isolated to `~/.nessie/`. |
+| **0** | Cost-tier proxy on `127.0.0.1:7777`. `credentials` / `credential_health` / `subscription_quotas` schemas. Tier router (T1/T2/T3 by header or model alias). Cost meter writing `cost_events`. Health monitor. TOS dial (Conservative default). |
+| **1** | Adapter catalog narrowed to four: `claude_local`, `codex_local`, `openai_compatible`, `http_webhook`. Six legacy adapter packages remain on disk, no longer registered. |
+| **2** | Reviewer pattern + Departments. `agents` extended (humanFirstName, humanLastName, tier, departmentId, autonomyLevel, reputationScore, roleTemplateKey). `issues` extended (reviewerAgentId, acceptanceCriteria, evidenceRefs, tierRequired). 8 `departments` seeded with oklch design tokens. 16 named role templates seeded (Aria Whitfield CEO, Marcus Chen CTO, Lena Park Head of HR, Owen Mackenzie Senior Reviewer, etc.). |
+| **3** | Meetings as first-class. `meetings` / `meeting_participants` / `meeting_messages` / `meeting_outcomes` schemas. Lifecycle state machine. Atomic message append with cost rollup. Outcome write policy gating DECIDE/ACTION/MEMORY/ISSUE behind operator approval. 8 REST endpoints. |
+| **4** | HR pipeline. `role_templates` (DB mirror of static seed) + `hires` + `candidates` + `scorecards`. 5-stage pipeline (open → sourcing → interviewing → trial → recommended → hired/rejected). `mintHiredAgent()` atomic transaction. Hard rule: trial candidates only ever T3 credentials. |
+| **5** | Cockpit UI. `tokens.css` (oklch design tokens). `<AgentLabel>` load-bearing primitive (always renders Name + Title). `CockpitShell` + `Rail` + `Topbar`. Four pages: Control Tower (live tier strip + spend gauge + agent feed), Meetings (rooms + active room), HR (5-stage kanban + 16 named templates), Org (8 dept cells + roster). Routes `/tower`, `/meet`, `/hr`, `/org`. |
+| **6** | Trust layer. `agent_bus_messages` (10 typed kinds), `work_contracts` (one per issue), `black_box_records` (forensic log), `reputation_events` (delta log → aggregate). Autonomy gating L0–L5. Bus rewraps low-autonomy state-changing kinds into `operator_approval_request` automatically. |
+| **7 starter** | v0.8 starter pack: `inbox_items` (universal capture + triage), `operator_constitution` (editable top-level doc with version history), `trust_receipts` (closes the Phase 6 loop — what shipped, who approved, cost, evidence, contributors, limitations). |
 
-We may accept contributions in the areas below, but if you want to work on roadmap-level core features, please coordinate with us first in Discord (`#dev`) before writing code. Bugs, docs, polish, and tightly scoped improvements are still the easiest contributions to merge.
+The v1 spine is complete. From here, every feature is opt-in and additive.
 
-If you want to extend Paperclip today, the best path is often the [plugin system](doc/plugins/PLUGIN_SPEC.md). Community reference implementations are also useful feedback even when they are not merged directly into core.
+## Up next — v0.8 wave 2 (high leverage on existing infra)
 
-## Milestones
+These use the v1 spine without new schema:
 
-### ✅ Plugin system
+- **Chief of Staff Mode** (§20.2) — the Inbox + Cockpit topbar already cover capture and tier surfacing; what remains is the natural-language command surface that reads state and routes work.
+- **Executive Briefs** (§20.12) — daily / weekly / monthly summaries. Pulls from `cost_events` (Phase 0), `meeting_outcomes` (Phase 3), `hires` (Phase 4), `reputation_events` (Phase 6), and `inbox_items` (Phase 7). Writes into `documents` + a Cockpit Tower panel.
+- **Disaster Recovery Pack** (§20.52) — operational. One-button export of every Nessie table to a tarball + import / verify. CLI surface, no new schema.
+- **Trust Receipts UI** — schema is in (Phase 7); needs a Cockpit drill-down that pulls evidence from `work_contracts` + cost from `cost_events` + reviewers from `meeting_outcomes`.
+- **Reviewer wakeup integration** — when `issues.status` flips to `in_review`, enqueue a `review_request` bus message (Phase 6) for the reviewer agent. Bridges Phase 2's reviewer pattern to Phase 6's bus.
 
-Paperclip should keep a thin core and rich edges. Plugins are the path for optional capabilities like knowledge bases, custom tracing, queues, doc editors, and other product-specific surfaces that do not need to live in the control plane itself.
+## Up next — v0.8 wave 3 (new schema, contained scope)
 
-### ✅ Get OpenClaw / claw-style agent employees
+Each is one new schema + service + REST + Cockpit panel:
 
-Paperclip should be able to hire and manage real claw-style agent workers, not just a narrow built-in runtime. This is part of the larger "bring your own agent" story and keeps the control plane useful across different agent ecosystems.
+- **Goal-to-Company Compiler** (§20.3) — turns a rough goal into project plans, departments, meetings, issue graphs, work contracts.
+- **Code Atlas + Repo Archaeologist** (§20.4–20.5) — live map of packages/modules/routes/migrations. New `code_entities` + `code_relationships` tables.
+- **Model Arena** (§20.6) — runs the same task against multiple T2/T3 models, scores quality/cost/speed.
+- **Agent Exams / Promotion** (§20.7) — `agent_exams` + `agent_exam_attempts` + `agent_badges`. Wires to autonomy level (Phase 6) so passing exams raises L.
+- **Computer Lab** (§20.8) — controlled visual/browser environment. Playwright-backed sandbox runtime.
+- **Visual QA** (§20.9) — `visual_snapshots` + `visual_reviews` for screenshot comparison.
+- **Artifact Factory + Publishing Pipeline** (§20.10–20.11) — `artifacts` + `artifact_versions` + `publishing_targets` + `publishing_jobs`.
+- **Telemetry Brain + Reliability** (§20.13–20.14) — `telemetry_events` + `reliability_findings`. Ingests traces / metrics / logs / CI output / proxy traces.
+- **Chaos Lab** (§20.15) — `chaos_scenarios`. Controlled failure injection.
+- **Feature Flag Lab + Experiment Lab** (§20.16–20.17) — `feature_flags` + `experiments`.
+- **Bounty Board** (§20.18) — `bounty_bids` against issues.
+- **Capacity Planner** (§20.19) — `capacity_snapshots`.
+- **Procurement Scout** (§20.20) — `procurement_findings`.
+- **Secure Remote Command** (§20.21) — `remote_sessions`.
+- **Guest Review Links** (§20.22) — `guest_links`.
+- **Prompt / Skill Version Control** (§20.25) — `prompt_versions` + `skill_versions`.
+- **Agent Diff Viewer** (§20.26) — `agent_diffs`.
+- **Data Rooms** (§20.27) + **Privacy Preflight** (§20.28) — `data_rooms` + `privacy_preflight_results`. Gates T3 access to sensitive context.
+- **Token Diet Coach** (§20.29) — `token_diet_findings`.
+- **Meeting Director Upgrades** (§20.30) — agenda timer, vote mode, decision lock. Mostly UI on top of Phase 3.
+- **Meeting Replay / Highlight Reel** (§20.31) — `meeting_replays`. Two-minute summaries.
+- **Persona Council** (§20.32) — `persona_council_reviews`. 7 simulated personas critique UX/copy.
+- **Support Simulator** (§20.33) — `support_simulator_tickets`.
+- **Onboarding Wizard 2.0** (§20.34) — extends the existing wizard with the operator-preferences interview from §20.45.
+- **Company Templates** (§20.35) — JSON bundles (Solo SaaS Builder, Open Source Maintainer, …).
+- **Release Train** (§20.36) — `releases`.
+- **Regression Memory + Technical Debt Ledger** (§20.37–20.38) — `regression_memories` + `technical_debt_items`.
+- **Architecture Fitness Functions** (§20.39) — `architecture_fitness_results`.
+- **Local App Store / Plugin Packs** (§20.40) — re-enables the plugin system (gated off in Phase −1) with a reviewed local catalog.
+- **External Agent Gateway** (§20.41) — exposes selected agents as MCP tool providers / webhook workers / public cards.
+- **Event Spine** (§20.42) — unified envelope across runs/meetings/HR/Finance/Policy. Reuses `activity_log` + a typed projection.
+- **Policy-as-Code** (§20.43) — `policy_rules` evaluated by a simple engine.
+- **Approval Simulator** (§20.44) — `approval_simulations`. What-if scenarios.
+- **Ask the Company Mode** (§20.47) — fan-out across departments (Phase 2) returning a synthesis.
+- **AI Whiteboard** (§20.48) — `whiteboards`.
+- **Roadmap Negotiator** (§20.49) — `roadmap_options`.
+- **Demo Recorder** (§20.50) — `demo_recordings`.
+- **Explain This System Mode** (§20.51) — pulls from docs + Code Atlas + decision records.
 
-### ✅ companies.sh - import and export entire organizations
+## Engineering loose ends
 
-Reusable companies matter. Import/export is the foundation for moving org structures, agent definitions, and reusable company setups between environments and eventually for broader company-template distribution.
+These don't add features but tighten the spine:
 
-### ✅ Easy AGENTS.md configurations
+- **Heartbeat tier stamping** — wire `agents.tier` (Phase 2) through the heartbeat scheduler so adapter invocations carry `X-Nessie-Tier` automatically. The two new adapters (Phase 1) already accept it; one-liner read in `services/heartbeat.ts`.
+- **Self-host Geist fonts** — currently loaded from Google Fonts CDN. Self-host at `ui/public/fonts/`.
+- **Pixel parity with the cockpit reference** — Phase 5 ships structurally faithful screens; refining each panel against the design HTML is iterative.
+- **Drill-down reskins** — `/agents/:id`, `/issues/:id`, `/approvals/:id` still render the legacy Layout. Reskin onto `<Panel>` + `<AgentLabel>`.
+- **SSE meeting transcripts** — `/api/meetings/:id/messages` is currently polled. Wire to SSE.
+- **Real `applyOutcomeEffects`** — Phase 3's outcome applier stubs creation. Real wiring to issues / decision_records / institutional memory.
+- **Black-box auto-recording** — heartbeat / meetings / hires don't write snapshots automatically; needs a recorder hook.
+- **Hard delete of legacy adapters** — `cursor-local`, `gemini-local`, `opencode-local`, `acpx-local`, `pi-local`, `openclaw-gateway` were soft-stripped in Phase 1. Real deletion is a tree cleanup any time.
+- **`pnpm dev` orchestrator (`dev-runner.ts`) tsx resolution** — `pnpm dev:server` works; the combined `pnpm dev` hits a Windows pnpm-exec quirk on tsx. Workaround: run `dev:server` and `dev:ui` separately.
 
-Agent setup should feel repo-native and legible. Simple `AGENTS.md`-style configuration lowers the barrier to getting an agent team running and makes it easier for contributors to understand how a company is wired together.
+## Out of scope for v1
 
-### ✅ Skills Manager
+Explicitly deferred per the plan:
 
-Agents need a practical way to discover, install, and use skills without every setup becoming bespoke. The skills layer is part of making Paperclip companies more reusable and easier to operate.
-
-### ✅ Scheduled Routines
-
-Recurring work should be native. Routine tasks like reports, reviews, and other periodic work need first-class scheduling so the company keeps operating even when no human is manually kicking work off.
-
-### ✅ Better Budgeting
-
-Budgets are a core control-plane feature, not an afterthought. Better budgeting means clearer spend visibility, safer hard stops, and better operator control over how autonomy turns into real cost.
-
-### ✅ Agent Reviews and Approvals
-
-Paperclip should support explicit review and approval stages as first-class workflow steps, not just ad hoc comments. That means reviewer routing, approval gates, change requests, and durable audit trails that fit the same task model as the rest of the control plane.
-
-### ✅ Multiple Human Users
-
-Paperclip needs a clearer path from solo operator to real human teams. That means shared board access, safer collaboration, and a better model for several humans supervising the same autonomous company.
-
-### ⚪ Cloud / Sandbox agents (e.g. Cursor / e2b agents)
-
-We want agents to run in more remote and sandboxed environments while preserving the same Paperclip control-plane model. This makes the system safer, more flexible, and more useful outside a single trusted local machine.
-
-### ⚪ Artifacts & Work Products
-
-Paperclip should make outputs first-class. That means generated artifacts, previews, deployable outputs, and the handoff from "agent did work" to "here is the result" should become more visible and easier to operate.
-
-### ⚪ Memory / Knowledge
-
-We want a stronger memory and knowledge surface for companies, agents, and projects. That includes durable memory, better recall of prior decisions and context, and a clearer path for knowledge-style capabilities without turning Paperclip into a generic chat app.
-
-### ⚪ Enforced Outcomes
-
-Paperclip should get stricter about what counts as finished work. Tasks, approvals, and execution flows should resolve to clear outcomes like merged code, published artifacts, shipped docs, or explicit decisions instead of stopping at vague status updates.
-
-### ⚪ MAXIMIZER MODE
-
-This is the direction for higher-autonomy execution: more aggressive delegation, deeper follow-through, and stronger operating loops with clear budgets, visibility, and governance. The point is not hidden autonomy; the point is more output per human supervisor.
-
-### ⚪ Deep Planning
-
-Some work needs more than a task description before execution starts. Deeper planning means stronger issue documents, revisionable plans, and clearer review loops for strategy-heavy work before agents begin execution.
-
-### ⚪ Work Queues
-
-Paperclip should support queue-style work streams for repeatable inputs like support, triage, review, and backlog intake. That would make it easier to route work continuously without turning every system into a one-off workflow.
-
-### ⚪ Self-Organization
-
-As companies grow, agents should be able to propose useful structural changes such as role adjustments, delegation changes, and new recurring routines. The goal is adaptive organizations that still stay within governance and approval boundaries.
-
-### ⚪ Automatic Organizational Learning
-
-Paperclip should get better at turning completed work into reusable organizational knowledge. That includes capturing playbooks, recurring fixes, and decision patterns so future work starts from what the company has already learned.
-
-### ⚪ CEO Chat
-
-We want a lighter-weight way to talk to leadership agents, but those conversations should still resolve to real work objects like plans, issues, approvals, or decisions. This should improve interaction without changing the core task-and-comments model.
-
-### ⚪ Cloud deployments
-
-Local-first remains important, but Paperclip also needs a cleaner shared deployment story. Teams should be able to run the same product in hosted or semi-hosted environments without changing the mental model.
-
-### ⚪ Desktop App
-
-A desktop app can make Paperclip feel more accessible and persistent for day-to-day operators. The goal is easier access, better local ergonomics, and a smoother default experience for users who want the control plane always close at hand.
+- **Multi-user** — Nessie is single-operator. Re-adding requires reverting the soft-strip in Phase −1.
+- **Cloud sandbox agents** — operator-machine-first. Re-add via the plugin system if needed.
+- **Telemetry leaving the machine** — never re-enabled by default.
