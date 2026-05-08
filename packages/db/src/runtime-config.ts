@@ -22,7 +22,7 @@ export type ResolvedDatabaseTarget =
   | {
       mode: "postgres";
       connectionString: string;
-      source: "DATABASE_URL" | "paperclip-env" | "config.database.connectionString";
+      source: "DATABASE_URL" | "nessie-env" | "config.database.connectionString";
       configPath: string;
       envPath: string;
     }
@@ -42,15 +42,18 @@ function expandHomePrefix(value: string): string {
 }
 
 function resolvePaperclipHomeDir(): string {
-  const envHome = process.env.PAPERCLIP_HOME?.trim();
+  // Mirrors server/src/home-paths.ts. NESSIE_HOME wins; PAPERCLIP_HOME
+  // is honoured as a transitional fallback. Default ~/.nessie keeps Nessie
+  // separate from any existing paperclipai install on the same machine.
+  const envHome = (process.env.NESSIE_HOME ?? process.env.PAPERCLIP_HOME)?.trim();
   if (envHome) return path.resolve(expandHomePrefix(envHome));
-  return path.resolve(os.homedir(), ".paperclip");
+  return path.resolve(os.homedir(), ".nessie");
 }
 
 function resolvePaperclipInstanceId(): string {
-  const raw = process.env.PAPERCLIP_INSTANCE_ID?.trim() || DEFAULT_INSTANCE_ID;
+  const raw = (process.env.NESSIE_INSTANCE_ID ?? process.env.PAPERCLIP_INSTANCE_ID)?.trim() || DEFAULT_INSTANCE_ID;
   if (!INSTANCE_ID_RE.test(raw)) {
-    throw new Error(`Invalid PAPERCLIP_INSTANCE_ID '${raw}'.`);
+    throw new Error(`Invalid NESSIE_INSTANCE_ID '${raw}'.`);
   }
   return raw;
 }
@@ -76,8 +79,11 @@ function findConfigFileFromAncestors(startDir: string): string | null {
   let currentDir = path.resolve(startDir);
 
   while (true) {
-    const candidate = path.resolve(currentDir, ".paperclip", CONFIG_BASENAME);
-    if (existsSync(candidate)) return candidate;
+    // Look for .nessie first; .paperclip is a transitional fallback only —
+    // never adopt one we didn't create, since the user's existing paperclipai
+    // install lives at the same path.
+    const nessieCandidate = path.resolve(currentDir, ".nessie", CONFIG_BASENAME);
+    if (existsSync(nessieCandidate)) return nessieCandidate;
 
     const nextDir = path.resolve(currentDir, "..");
     if (nextDir === currentDir) return null;
@@ -86,8 +92,9 @@ function findConfigFileFromAncestors(startDir: string): string | null {
 }
 
 function resolvePaperclipConfigPath(): string {
-  if (process.env.PAPERCLIP_CONFIG?.trim()) {
-    return path.resolve(process.env.PAPERCLIP_CONFIG.trim());
+  const explicit = (process.env.NESSIE_CONFIG ?? process.env.PAPERCLIP_CONFIG)?.trim();
+  if (explicit) {
+    return path.resolve(explicit);
   }
   return findConfigFileFromAncestors(process.cwd()) ?? resolveDefaultConfigPath();
 }
@@ -233,7 +240,7 @@ export function resolveDatabaseTarget(): ResolvedDatabaseTarget {
     return {
       mode: "postgres",
       connectionString: fileEnvUrl,
-      source: "paperclip-env",
+      source: "nessie-env",
       configPath,
       envPath,
     };

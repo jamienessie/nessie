@@ -13,15 +13,19 @@ function expandHomePrefix(value: string): string {
 }
 
 export function resolvePaperclipHomeDir(): string {
-  const envHome = process.env.PAPERCLIP_HOME?.trim();
+  // Nessie writes its instance state under ~/.nessie by default. NESSIE_HOME
+  // overrides; PAPERCLIP_HOME is honoured as a transitional fallback so a
+  // user with an existing paperclipai install on the same machine doesn't
+  // accidentally cross-contaminate (set NESSIE_HOME explicitly to be safe).
+  const envHome = (process.env.NESSIE_HOME ?? process.env.PAPERCLIP_HOME)?.trim();
   if (envHome) return path.resolve(expandHomePrefix(envHome));
-  return path.resolve(os.homedir(), ".paperclip");
+  return path.resolve(os.homedir(), ".nessie");
 }
 
 export function resolvePaperclipInstanceId(): string {
-  const raw = process.env.PAPERCLIP_INSTANCE_ID?.trim() || DEFAULT_INSTANCE_ID;
+  const raw = (process.env.NESSIE_INSTANCE_ID ?? process.env.PAPERCLIP_INSTANCE_ID)?.trim() || DEFAULT_INSTANCE_ID;
   if (!INSTANCE_ID_RE.test(raw)) {
-    throw new Error(`Invalid PAPERCLIP_INSTANCE_ID '${raw}'.`);
+    throw new Error(`Invalid NESSIE_INSTANCE_ID '${raw}'.`);
   }
   return raw;
 }
