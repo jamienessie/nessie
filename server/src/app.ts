@@ -206,6 +206,11 @@ export async function createApp(
   // action items / memory / proposed issues).
   const { meetingRoutes } = await import("./routes/meetings.js");
   api.use(meetingRoutes(db));
+  // Phase 4: HR pipeline (role templates, hires, candidates, scorecards).
+  const { hireRoutes } = await import("./routes/hires.js");
+  const { departmentRoutes } = await import("./routes/departments.js");
+  api.use(hireRoutes(db));
+  api.use(departmentRoutes(db));
   api.use(secretRoutes(db));
   api.use(costRoutes(db, { pluginWorkerManager: workerManager }));
   api.use(activityRoutes(db));

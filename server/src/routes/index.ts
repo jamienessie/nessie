@@ -20,3 +20,5 @@ export { accessRoutes } from "./access.js";
 export { instanceSettingsRoutes } from "./instance-settings.js";
 export { instanceDatabaseBackupRoutes } from "./instance-database-backups.js";
 export { meetingRoutes } from "./meetings.js";
+export { hireRoutes } from "./hires.js";
+export { departmentRoutes } from "./departments.js";

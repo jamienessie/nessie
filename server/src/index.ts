@@ -497,13 +497,24 @@ export async function startServer(): Promise<StartedServer> {
     // is idempotent — only missing rows are inserted, so re-runs are
     // cheap. Required for new agents to attach via departmentId.
     const { seedDefaultDepartments } = await import("./services/departments.js");
+    const { hiresService } = await import("./services/hires.js");
     const companyRows = await (db as any).select({ id: companies.id }).from(companies);
+    const hires = hiresService(db as any);
     for (const company of companyRows) {
-      const seedResult = await seedDefaultDepartments(db as any, company.id);
-      if (seedResult.inserted > 0) {
+      const deptResult = await seedDefaultDepartments(db as any, company.id);
+      if (deptResult.inserted > 0) {
         logger.info(
-          { companyId: company.id, inserted: seedResult.inserted, existing: seedResult.existing },
+          { companyId: company.id, inserted: deptResult.inserted, existing: deptResult.existing },
           "Seeded default departments for company",
+        );
+      }
+      // Phase 4: seed the 16 role templates (idempotent; resolves
+      // departmentId from the just-seeded departments).
+      const tmplResult = await hires.seedRoleTemplates(company.id);
+      if (tmplResult.inserted > 0) {
+        logger.info(
+          { companyId: company.id, inserted: tmplResult.inserted, existing: tmplResult.existing },
+          "Seeded role templates",
         );
       }
     }
