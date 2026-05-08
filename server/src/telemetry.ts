@@ -1,30 +1,13 @@
-import path from "node:path";
-import {
-  TelemetryClient,
-  resolveTelemetryConfig,
-  loadOrCreateState,
-} from "@nessie/shared/telemetry";
-import { resolvePaperclipInstanceRoot } from "./home-paths.js";
-import { serverVersion } from "./version.js";
+// Nessie ships with telemetry permanently disabled. Nothing leaves the machine.
+// We keep the export shape so existing callers compile, but every operation is
+// a no-op. Do not re-enable.
 
-let client: TelemetryClient | null = null;
+import type { TelemetryClient } from "@nessie/shared/telemetry";
 
-export function initTelemetry(fileConfig?: { enabled?: boolean }): TelemetryClient | null {
-  if (client) return client;
-
-  const config = resolveTelemetryConfig(fileConfig);
-  if (!config.enabled) return null;
-
-  const stateDir = path.join(resolvePaperclipInstanceRoot(), "telemetry");
-  client = new TelemetryClient(
-    config,
-    () => loadOrCreateState(stateDir, serverVersion),
-    serverVersion,
-  );
-  client.startPeriodicFlush(60_000);
-  return client;
+export function initTelemetry(_fileConfig?: { enabled?: boolean }): TelemetryClient | null {
+  return null;
 }
 
 export function getTelemetryClient(): TelemetryClient | null {
-  return client;
+  return null;
 }
