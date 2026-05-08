@@ -202,6 +202,10 @@ export async function createApp(
   api.use(executionWorkspaceRoutes(db));
   api.use(goalRoutes(db));
   api.use(approvalRoutes(db, { pluginWorkerManager: workerManager }));
+  // Phase 3: Meetings (live multi-agent rooms producing decisions /
+  // action items / memory / proposed issues).
+  const { meetingRoutes } = await import("./routes/meetings.js");
+  api.use(meetingRoutes(db));
   api.use(secretRoutes(db));
   api.use(costRoutes(db, { pluginWorkerManager: workerManager }));
   api.use(activityRoutes(db));
