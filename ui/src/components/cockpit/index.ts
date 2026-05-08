@@ -1,4 +1,5 @@
 export { CockpitShell } from "./CockpitShell";
+export { CockpitDrillShell } from "./CockpitDrillShell";
 export { Rail } from "./Rail";
 export { Topbar, type TopbarTierState } from "./Topbar";
 export { Panel } from "./Panel";

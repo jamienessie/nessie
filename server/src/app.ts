@@ -217,6 +217,13 @@ export async function createApp(
   // Phase 7 starter pack: Inbox, Operator Constitution, Trust Receipts.
   const { v0_8Routes } = await import("./routes/v0_8.js");
   api.use(v0_8Routes(db));
+  // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
+  const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
+  const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");
+  const { disasterRecoveryRoutes } = await import("./routes/disaster-recovery.js");
+  api.use(chiefOfStaffRoutes(db));
+  api.use(executiveBriefRoutes(db));
+  api.use(disasterRecoveryRoutes(db));
   api.use(secretRoutes(db));
   api.use(costRoutes(db, { pluginWorkerManager: workerManager }));
   api.use(activityRoutes(db));

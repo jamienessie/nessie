@@ -7581,9 +7581,24 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           "local agent jwt secret missing or invalid; running without injected PAPERCLIP_API_KEY",
         );
       }
+      // Phase 8.4: stamp the agent's cost-tier into adapterConfig so the
+      // openai_compatible / http_webhook adapters can flag X-Nessie-Tier
+      // on proxy calls without each adapter re-reading agents.tier.
+      // Other adapters (claude_local, codex_local) read this through
+      // their own configs if they need it; the field is harmless if
+      // ignored.
+      const tieredAgent = (agent as { tier?: string | null }).tier
+        ? {
+            ...agent,
+            adapterConfig: {
+              ...((agent.adapterConfig as Record<string, unknown> | null | undefined) ?? {}),
+              tier: (agent as { tier?: string | null }).tier,
+            },
+          }
+        : agent;
       const adapterResult = await adapter.execute({
         runId: run.id,
-        agent,
+        agent: tieredAgent,
         runtime: runtimeForAdapter,
         config: runtimeConfig,
         context,

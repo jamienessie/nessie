@@ -2,6 +2,7 @@ import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "@/lib/r
 import { Button } from "@/components/ui/button";
 import { Layout } from "./components/Layout";
 import { CockpitShell } from "./components/cockpit/CockpitShell";
+import { CockpitDrillShell } from "./components/cockpit/CockpitDrillShell";
 import { ControlTower, CockpitMeetings, CockpitHR, CockpitOrg } from "./pages/cockpit";
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { CloudAccessGate } from "./components/CloudAccessGate";
@@ -322,6 +323,13 @@ export function App() {
             <Route path="meet" element={<CockpitMeetings />} />
             <Route path="hr" element={<CockpitHR />} />
             <Route path="org" element={<CockpitOrg />} />
+          </Route>
+          {/* Phase 8.6 — cockpit chrome around legacy drill-down pages.
+              Inner content stays as-is; rail + topbar wrap it. */}
+          <Route element={<CockpitDrillShell />}>
+            <Route path="agent/:agentId" element={<AgentDetail />} />
+            <Route path="issue/:issueId" element={<IssueDetail />} />
+            <Route path="approval/:approvalId" element={<ApprovalDetail />} />
           </Route>
           <Route path=":companyPrefix" element={<Layout />}>
             {boardRoutes()}
