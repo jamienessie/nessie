@@ -27,6 +27,12 @@ import { ApprovalDetail } from "./pages/ApprovalDetail";
 import { Costs } from "./pages/Costs";
 import { Activity } from "./pages/Activity";
 import { Inbox } from "./pages/Inbox";
+import { Departments } from "./pages/Departments";
+import { Hiring } from "./pages/Hiring";
+import { Meetings } from "./pages/Meetings";
+import { TrustLayer } from "./pages/TrustLayer";
+import { ChiefOfStaff } from "./pages/ChiefOfStaff";
+import { Briefs } from "./pages/Briefs";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanyEnvironments } from "./pages/CompanyEnvironments";
 import { CompanyAccess } from "./pages/CompanyAccess";
@@ -122,6 +128,12 @@ function boardRoutes() {
       <Route path="approvals/:approvalId" element={<ApprovalDetail />} />
       <Route path="costs" element={<Costs />} />
       <Route path="activity" element={<Activity />} />
+      <Route path="departments" element={<Departments />} />
+      <Route path="hiring" element={<Hiring />} />
+      <Route path="meetings" element={<Meetings />} />
+      <Route path="trust-layer" element={<TrustLayer />} />
+      <Route path="chief-of-staff" element={<ChiefOfStaff />} />
+      <Route path="briefs" element={<Briefs />} />
       <Route path="inbox" element={<InboxRootRedirect />} />
       <Route path="inbox/mine" element={<Inbox />} />
       <Route path="inbox/recent" element={<Inbox />} />
