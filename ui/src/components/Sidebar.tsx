@@ -146,6 +146,7 @@ export function Sidebar() {
         <SidebarSection label="OPERATOR">
           <SidebarNavItem to="/chief-of-staff" label="Chief of Staff" swatchColor="#FF6B9A" />
           <SidebarNavItem to="/briefs" label="Briefs" swatchColor="#FFB400" />
+          <SidebarNavItem to="/plug-in-janitor" label="Plug-In Janitor" swatchColor="#FFA94D" />
           <SidebarNavItem to="/hiring" label="Hiring" swatchColor="#5B8DEF" />
           <SidebarNavItem to="/meetings" label="Meetings" swatchColor="#B872FF" />
           <SidebarNavItem to="/trust-layer" label="Trust Layer" swatchColor="#22C2A4" />

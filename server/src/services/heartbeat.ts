@@ -45,6 +45,7 @@ import {
 import { conflict, HttpError, notFound } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import { publishLiveEvent } from "./live-events.js";
+import { maybeTriggerAutoOnError as maybeTriggerJanitorAutoOnError } from "./plug-in-janitor.js";
 import { getRunLogStore, type RunLogHandle } from "./run-log-store.js";
 import { getServerAdapter, listAdapterModelProfiles, runningProcesses } from "../adapters/index.js";
 import type {
@@ -3707,6 +3708,16 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         },
       });
       publishRunLifecyclePluginEvent(updated);
+      // Plug-In Janitor auto-on-error: when a run ends with a broken-binding
+      // error code, kick a per-agent Janitor sweep. Helper dedupes per agent
+      // to avoid stampedes when an adapter is wholly down. Fire-and-forget.
+      if (updated.status === "failed" || updated.status === "timed_out") {
+        void maybeTriggerJanitorAutoOnError(db, {
+          companyId: updated.companyId,
+          agentId: updated.agentId,
+          errorCode: updated.errorCode ?? null,
+        });
+      }
     }
 
     return updated;

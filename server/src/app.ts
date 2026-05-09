@@ -230,6 +230,11 @@ export async function createApp(
   api.use(chiefOfStaffRoutes(db));
   api.use(executiveBriefRoutes(db));
   api.use(disasterRecoveryRoutes(db));
+  // Plug-In Janitor (Hank Brennan). Sweeps the agent roster for broken or
+  // out-of-quota model bindings; swaps to working same-tier replacements;
+  // escalates whole-adapter outages to engineering with a drafted plan.
+  const { plugInJanitorRoutes } = await import("./routes/plug-in-janitor.js");
+  api.use(plugInJanitorRoutes(db));
   api.use(secretRoutes(db));
   api.use(costRoutes(db, { pluginWorkerManager: workerManager }));
   api.use(activityRoutes(db));

@@ -35,6 +35,7 @@ import { MeetingRoom } from "./pages/MeetingRoom";
 import { TrustLayer } from "./pages/TrustLayer";
 import { ChiefOfStaff } from "./pages/ChiefOfStaff";
 import { Briefs } from "./pages/Briefs";
+import { PlugInJanitor } from "./pages/PlugInJanitor";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanyEnvironments } from "./pages/CompanyEnvironments";
 import { CompanyAccess } from "./pages/CompanyAccess";
@@ -138,6 +139,7 @@ function boardRoutes() {
       <Route path="trust-layer" element={<TrustLayer />} />
       <Route path="chief-of-staff" element={<ChiefOfStaff />} />
       <Route path="briefs" element={<Briefs />} />
+      <Route path="plug-in-janitor" element={<PlugInJanitor />} />
       <Route path="inbox" element={<InboxRootRedirect />} />
       <Route path="inbox/mine" element={<Inbox />} />
       <Route path="inbox/recent" element={<Inbox />} />

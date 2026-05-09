@@ -27,6 +27,7 @@ const BOARD_ROUTE_ROOTS = new Set([
   "briefs",
   "hiring",
   "trust-layer",
+  "plug-in-janitor",
 ]);
 
 const GLOBAL_ROUTE_ROOTS = new Set(["auth", "invite", "board-claim", "cli-auth", "docs", "instance"]);

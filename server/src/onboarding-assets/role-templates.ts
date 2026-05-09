@@ -180,6 +180,17 @@ export const ROLE_TEMPLATES: readonly RoleTemplate[] = [
     defaultAutonomyLevel: 2,
     pitch: "Approves IC work against acceptance criteria. T1 because review is judgment, not generation.",
   },
+  {
+    key: "eng.plug_in_janitor",
+    defaultFirstName: "Hank",
+    defaultLastName: "Brennan",
+    title: "Plug-In Janitor",
+    tier: "T3",
+    departmentKey: "eng",
+    defaultAdapterType: "gemini_compatible",
+    defaultAutonomyLevel: 4,
+    pitch: "Sweeps the agent roster on a 15-min cron, swapping broken or out-of-quota model bindings to working same-tier replacements. Escalates whole-adapter outages to engineering with a drafted plan. T3 because the work is high-volume and rule-driven.",
+  },
 
   // QA
   {

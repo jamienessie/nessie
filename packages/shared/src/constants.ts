@@ -528,6 +528,9 @@ export const LIVE_EVENT_TYPES = [
   "meeting.outcome.approved",
   "meeting.turn.starting",
   "meeting.turn.failed",
+  // Plug-In Janitor sweep completion — Hank fires this after a sweep so
+  // the operator's /plug-in-janitor page refreshes without polling.
+  "janitor.sweep.completed",
 ] as const;
 export type LiveEventType = (typeof LIVE_EVENT_TYPES)[number];
 
