@@ -1,10 +1,13 @@
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getAgentAccent } from "@/lib/agent-color";
 
 type IdentitySize = "xs" | "sm" | "default" | "lg";
 
 export interface IdentityProps {
   name: string;
+  /** Agent id used to derive a deterministic accent color for the avatar bubble. */
+  agentId?: string | null;
   avatarUrl?: string | null;
   initials?: string;
   size?: IdentitySize;
@@ -24,14 +27,16 @@ const textSize: Record<IdentitySize, string> = {
   lg: "text-sm",
 };
 
-export function Identity({ name, avatarUrl, initials, size = "default", className }: IdentityProps) {
+export function Identity({ name, agentId, avatarUrl, initials, size = "default", className }: IdentityProps) {
   const displayInitials = initials ?? deriveInitials(name);
+  const accent = getAgentAccent(agentId ?? name);
+  const fallbackClass = agentId || name ? cn(accent.bg, accent.text, "font-semibold") : undefined;
 
   return (
     <span className={cn("inline-flex gap-1.5 items-center", size === "xs" && "gap-1", size === "lg" && "gap-2", className)}>
       <Avatar size={size}>
         {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
-        <AvatarFallback>{displayInitials}</AvatarFallback>
+        <AvatarFallback className={fallbackClass}>{displayInitials}</AvatarFallback>
       </Avatar>
       <span className={cn("truncate", textSize[size])}>{name}</span>
     </span>

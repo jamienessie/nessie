@@ -243,6 +243,7 @@ export function Dashboard() {
               value={data.agents.active + data.agents.running + data.agents.paused + data.agents.error}
               label="Agents Enabled"
               to="/agents"
+              tone="success"
               description={
                 <span>
                   {data.agents.running} running{", "}
@@ -256,6 +257,7 @@ export function Dashboard() {
               value={data.tasks.inProgress}
               label="Tasks In Progress"
               to="/issues"
+              tone="info"
               description={
                 <span>
                   {data.tasks.open} open{", "}
@@ -268,6 +270,7 @@ export function Dashboard() {
               value={formatCents(data.costs.monthSpendCents)}
               label="Month Spend"
               to="/costs"
+              tone="spend"
               description={
                 <span>
                   {data.costs.monthBudgetCents > 0
@@ -281,6 +284,7 @@ export function Dashboard() {
               value={data.pendingApprovals + data.budgets.pendingApprovals}
               label="Pending Approvals"
               to="/approvals"
+              tone="warning"
               description={
                 <span>
                   {data.budgets.pendingApprovals > 0
@@ -372,7 +376,7 @@ export function Dashboard() {
                             {issue.assigneeAgentId && (() => {
                               const name = agentName(issue.assigneeAgentId);
                               return name
-                                ? <span className="hidden sm:inline-flex"><Identity name={name} size="sm" /></span>
+                                ? <span className="hidden sm:inline-flex"><Identity name={name} agentId={issue.assigneeAgentId} size="sm" /></span>
                                 : null;
                             })()}
                             <span className="text-xs text-muted-foreground sm:hidden">&middot;</span>

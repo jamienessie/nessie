@@ -1,6 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import type { Db } from "@nessie/db";
 import { hiresService, type HireState } from "../services/hires.js";
+import {
+  ensureHrAgent,
+  generateCandidates,
+  synthesizeScorecard,
+} from "../services/hr-orchestrator.js";
+import { meetingsService } from "../services/meetings.js";
 
 // HR pipeline REST surface. Mounted at /api.
 
@@ -114,14 +120,148 @@ export function hireRoutes(db: Db): Router {
       res.status(400).json({ error: "to required" });
       return;
     }
+    const hireId = paramId(req, "id");
     try {
-      const hire = await svc.transitionHire(companyId, paramId(req, "id"), to);
+      const hire = await svc.transitionHire(companyId, hireId, to);
+      // Auto-generate candidates on first entry to `sourcing`. Fire-and-
+      // forget so the operator gets the transition response immediately.
+      if (to === "sourcing") {
+        const existing = await svc.listCandidates(hireId);
+        if (existing.length === 0) {
+          void generateCandidates({ db, companyId, hireId, count: 3 })
+            .then((result) => {
+              if (!result.ok) {
+                console.warn(`[hires] auto-generate candidates failed for ${hireId}: ${result.error}`);
+              } else {
+                console.log(`[hires] auto-generated ${result.created.length} candidates for hire ${hireId}`);
+              }
+            })
+            .catch((err) => console.error("[hires] auto-generate threw", err));
+        }
+      }
       res.json({ hire });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       res.status(409).json({ error: message });
     }
   });
+
+  // -----------------------------------------------------------------
+  // AI-driven HR endpoints (powered by hr-orchestrator + Lena Park)
+  // -----------------------------------------------------------------
+
+  /** Manually re-run candidate generation for a hire (e.g., to add more). */
+  router.post("/hires/:id/generate-candidates", async (req: Request, res: Response) => {
+    const companyId = pickCompanyId(req);
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const count = typeof body.count === "number" && body.count > 0 ? Math.min(body.count, 8) : 3;
+    const result = await generateCandidates({
+      db,
+      companyId,
+      hireId: paramId(req, "id"),
+      count,
+    });
+    if (!result.ok) {
+      res.status(502).json({ error: result.error });
+      return;
+    }
+    res.status(201).json({ candidates: result.created });
+  });
+
+  /**
+   * Spawn an interview meeting for a candidate. Lena Park hosts; the
+   * candidate joins as a `candidate`-role participant; optional panel
+   * agents (e.g., the CTO for an engineering role) can be added by the
+   * caller. Returns the new meeting id so the UI can navigate into the
+   * room.
+   */
+  router.post(
+    "/hires/:hireId/candidates/:candidateId/start-interview",
+    async (req: Request, res: Response) => {
+      const companyId = pickCompanyId(req);
+      if (!companyId) {
+        res.status(400).json({ error: "companyId required" });
+        return;
+      }
+      const hireId = paramId(req, "hireId");
+      const candidateId = paramId(req, "candidateId");
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const panelAgentIds = Array.isArray(body.panelAgentIds)
+        ? (body.panelAgentIds as unknown[]).filter((s): s is string => typeof s === "string")
+        : [];
+
+      const hire = await svc.getHire(companyId, hireId);
+      if (!hire) {
+        res.status(404).json({ error: "hire not found" });
+        return;
+      }
+      const cands = await svc.listCandidates(hireId);
+      const candidate = cands.find((c) => c.id === candidateId);
+      if (!candidate) {
+        res.status(404).json({ error: "candidate not found" });
+        return;
+      }
+
+      const hrAgentId = await ensureHrAgent(db, companyId);
+      const meetingsApiSvc = meetingsService(db);
+      const meeting = await meetingsApiSvc.create({
+        companyId,
+        title: `Interview: ${candidate.humanFirstName} ${candidate.humanLastName} for ${hire.title}`,
+        mode: "interview",
+        agendaMarkdown: hire.description ?? `Interview for the role of ${hire.title}.`,
+        facilitatorAgentId: hrAgentId,
+        turnLimit: 12,
+      });
+      // Add Lena (host), candidate, and any panel agents.
+      await meetingsApiSvc.addParticipant(meeting.id, { agentId: hrAgentId }, "host");
+      await meetingsApiSvc.addParticipant(meeting.id, { candidateId }, "candidate");
+      for (const panelId of panelAgentIds) {
+        if (panelId === hrAgentId) continue;
+        await meetingsApiSvc.addParticipant(meeting.id, { agentId: panelId }, "interviewer");
+      }
+      // Mark the candidate as interviewing.
+      await svc.setCandidateStatus(candidateId, "interviewing");
+      res.status(201).json({ meetingId: meeting.id });
+    },
+  );
+
+  /**
+   * After an interview meeting wraps, ask Lena to write a rubric scorecard
+   * from the transcript. Operator can advance/reject the candidate based
+   * on the scorecard's recommendation.
+   */
+  router.post(
+    "/hires/:hireId/candidates/:candidateId/synthesize-scorecard",
+    async (req: Request, res: Response) => {
+      const companyId = pickCompanyId(req);
+      if (!companyId) {
+        res.status(400).json({ error: "companyId required" });
+        return;
+      }
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const meetingId = pickString(body.meetingId);
+      if (!meetingId) {
+        res.status(400).json({ error: "meetingId required" });
+        return;
+      }
+      const result = await synthesizeScorecard({
+        db,
+        companyId,
+        hireId: paramId(req, "hireId"),
+        candidateId: paramId(req, "candidateId"),
+        meetingId,
+      });
+      if (!result.ok) {
+        res.status(502).json({ error: result.error });
+        return;
+      }
+      res.status(201).json({ scorecard: result.scorecard });
+    },
+  );
 
   // -----------------------------------------------------------------
   // candidates

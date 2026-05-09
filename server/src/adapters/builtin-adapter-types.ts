@@ -7,6 +7,7 @@
  *   - openai_compatible  — workhorse for T2/T3 via the cost-tier proxy
  *   - openrouter_compatible — remote OpenRouter catalog with live discovery
  *   - gemini_compatible  — Google Gemini API, free-tier filter (Phase 12)
+ *   - azure_openai       — Azure OpenAI Service with live deployment discovery (T2)
  *   - http_webhook       — external automations / human-in-the-loop
  *   - process / http     — adapter-plugin transports (always available)
  *
@@ -21,6 +22,7 @@ export const BUILTIN_ADAPTER_TYPES = new Set([
   "openai_compatible",
   "openrouter_compatible",
   "gemini_compatible",
+  "azure_openai",
   "http_webhook",
   "process",
   "http",

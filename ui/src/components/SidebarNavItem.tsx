@@ -3,6 +3,7 @@ import { SIDEBAR_SCROLL_RESET_STATE } from "../lib/navigation-scroll";
 import { cn } from "../lib/utils";
 import { useSidebar } from "../context/SidebarContext";
 import type { LucideIcon } from "lucide-react";
+import type { SidebarTone } from "./SidebarSection";
 
 interface SidebarNavItemProps {
   to: string;
@@ -16,7 +17,16 @@ interface SidebarNavItemProps {
   textBadgeTone?: "default" | "amber";
   alert?: boolean;
   liveCount?: number;
+  /** Section tone — colors the active-state left rail. */
+  tone?: SidebarTone;
 }
+
+const toneRailClass: Record<SidebarTone, string> = {
+  work: "before:bg-[var(--tone-work-rail)]",
+  company: "before:bg-[var(--tone-company-rail)]",
+  operator: "before:bg-[var(--tone-operator-rail)]",
+  neutral: "before:bg-foreground/40",
+};
 
 export function SidebarNavItem({
   to,
@@ -30,6 +40,7 @@ export function SidebarNavItem({
   textBadgeTone = "default",
   alert = false,
   liveCount,
+  tone = "neutral",
 }: SidebarNavItemProps) {
   const { isMobile, setSidebarOpen } = useSidebar();
 
@@ -41,9 +52,11 @@ export function SidebarNavItem({
       onClick={() => { if (isMobile) setSidebarOpen(false); }}
       className={({ isActive }) =>
         cn(
-          "flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors",
+          "relative flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors",
+          // Left rail (3px) — only visible on active state
+          "before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:opacity-0 before:transition-opacity",
           isActive
-            ? "bg-accent text-foreground"
+            ? cn("bg-accent text-foreground before:opacity-100", toneRailClass[tone])
             : "text-foreground/80 hover:bg-accent/50 hover:text-foreground",
           className,
         )

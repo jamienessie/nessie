@@ -25,5 +25,16 @@ export function chiefOfStaffRoutes(db: Db): Router {
     res.json(response);
   });
 
+  // Always-on dashboard counts powering the Chief of Staff page's left
+  // pane. The client polls this every 30s + invalidates on relevant
+  // live events. Recent activity and today's meetings are fetched from
+  // the existing /activity and /meetings endpoints.
+  router.get("/chief/dashboard", async (req: Request, res: Response) => {
+    const companyId = pickCompanyId(req);
+    if (!companyId) { res.status(400).json({ error: "companyId required" }); return; }
+    const counts = await svc.dashboard({ companyId });
+    res.json(counts);
+  });
+
   return router;
 }

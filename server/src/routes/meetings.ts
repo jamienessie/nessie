@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import type { Db } from "@nessie/db";
 import { meetingsService, type MeetingMode, type MeetingState } from "../services/meetings.js";
 import type { MeetingOutcomeKind } from "../services/meeting-write-policy.js";
+import { cancelAutoLoop, startAutoLoop } from "../services/meeting-orchestrator.js";
 
 // Meetings REST surface.
 //
@@ -121,6 +122,14 @@ export function meetingRoutes(db: Db): Router {
     }
     try {
       const meeting = await svc.transition(companyId, paramId(req, "id"), to);
+      // Lifecycle hooks: kick the auto-loop on entry to `active`, cancel it
+      // on any other transition (so paused / synthesizing / completed all
+      // halt outstanding agent turns).
+      if (to === "active") {
+        startAutoLoop({ db, companyId, meetingId: meeting.id });
+      } else {
+        cancelAutoLoop(meeting.id);
+      }
       res.json({ meeting });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -131,12 +140,18 @@ export function meetingRoutes(db: Db): Router {
   router.post("/meetings/:id/participants", async (req: Request, res: Response) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const agentId = pickString(body.agentId);
-    if (!agentId) {
-      res.status(400).json({ error: "agentId required" });
+    const candidateId = pickString(body.candidateId);
+    if (!agentId && !candidateId) {
+      res.status(400).json({ error: "agentId or candidateId required" });
+      return;
+    }
+    if (agentId && candidateId) {
+      res.status(400).json({ error: "specify either agentId or candidateId, not both" });
       return;
     }
     const role = pickString(body.role) ?? "panel";
-    const created = await svc.addParticipant(paramId(req, "id"), agentId, role);
+    const speaker = agentId ? { agentId } : { candidateId: candidateId! };
+    const created = await svc.addParticipant(paramId(req, "id"), speaker, role);
     res.status(created ? 201 : 200).json({ participant: created });
   });
 

@@ -4,6 +4,7 @@ const BOARD_ROUTE_ROOTS = new Set([
   "company",
   "skills",
   "org",
+  "departments",
   "agents",
   "projects",
   "workspaces",
@@ -20,11 +21,12 @@ const BOARD_ROUTE_ROOTS = new Set([
   "design-guide",
   "search",
   "departments",
-  "hiring",
+  // Operator section
   "meetings",
-  "trust-layer",
   "chief-of-staff",
   "briefs",
+  "hiring",
+  "trust-layer",
 ]);
 
 const GLOBAL_ROUTE_ROOTS = new Set(["auth", "invite", "board-claim", "cli-auth", "docs", "instance"]);

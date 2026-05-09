@@ -12,6 +12,7 @@ import {
   outcomeRequiresApproval,
   type MeetingOutcomeKind,
 } from "./meeting-write-policy.js";
+import { publishLiveEvent } from "./live-events.js";
 
 // Meetings service.
 //
@@ -160,6 +161,11 @@ export class MeetingsService {
       .set(patch)
       .where(and(eq(meetings.companyId, companyId), eq(meetings.id, meetingId)))
       .returning();
+    publishLiveEvent({
+      companyId,
+      type: "meeting.transitioned",
+      payload: { meetingId, from, to, meeting: updated },
+    });
     return updated;
   }
 
@@ -171,13 +177,57 @@ export class MeetingsService {
       .orderBy(asc(meetingParticipants.joinedAt));
   }
 
-  async addParticipant(meetingId: string, agentId: string, role: string = "panel") {
+  /**
+   * Add a participant to a meeting. Speaker is either an existing agent
+   * or a hiring-pipeline candidate persona — exactly one of `agentId`
+   * and `candidateId` must be set (DB CHECK constraint enforces this).
+   */
+  async addParticipant(
+    meetingId: string,
+    speaker: { agentId: string; candidateId?: undefined } | { agentId?: undefined; candidateId: string },
+    role: string = "panel",
+  ) {
+    if (speaker.agentId) {
+      const [created] = await this.db
+        .insert(meetingParticipants)
+        .values({ meetingId, agentId: speaker.agentId, role })
+        .onConflictDoNothing({ target: [meetingParticipants.meetingId, meetingParticipants.agentId] })
+        .returning();
+      if (created) {
+        const meeting = await this.getById(meetingId);
+        if (meeting) {
+          publishLiveEvent({
+            companyId: meeting.companyId,
+            type: "meeting.participant.added",
+            payload: { meetingId, participant: created },
+          });
+        }
+      }
+      return created ?? null;
+    }
+    // candidate path — uses the partial unique on (meetingId, candidateId).
     const [created] = await this.db
       .insert(meetingParticipants)
-      .values({ meetingId, agentId, role })
-      .onConflictDoNothing({ target: [meetingParticipants.meetingId, meetingParticipants.agentId] })
+      .values({ meetingId, candidateId: speaker.candidateId, role })
+      .onConflictDoNothing({ target: [meetingParticipants.meetingId, meetingParticipants.candidateId] })
       .returning();
+    if (created) {
+      const meeting = await this.getById(meetingId);
+      if (meeting) {
+        publishLiveEvent({
+          companyId: meeting.companyId,
+          type: "meeting.participant.added",
+          payload: { meetingId, participant: created },
+        });
+      }
+    }
     return created ?? null;
+  }
+
+  /** Internal helper — fetch a meeting by id without scoping by company. */
+  async getById(meetingId: string) {
+    const rows = await this.db.select().from(meetings).where(eq(meetings.id, meetingId)).limit(1);
+    return rows[0] ?? null;
   }
 
   async listMessages(meetingId: string, opts?: { limit?: number; afterTurnIndex?: number }) {
@@ -202,7 +252,7 @@ export class MeetingsService {
     costCents?: number;
   }) {
     // Atomic: increment meetings.turnIndex, insert message, lift cost.
-    return this.db.transaction(async (tx) => {
+    const result = await this.db.transaction(async (tx) => {
       const [updatedMeeting] = await tx
         .update(meetings)
         .set({
@@ -211,7 +261,7 @@ export class MeetingsService {
           updatedAt: new Date(),
         })
         .where(eq(meetings.id, input.meetingId))
-        .returning({ turnIndex: meetings.turnIndex });
+        .returning({ turnIndex: meetings.turnIndex, companyId: meetings.companyId });
       const turnIndex = updatedMeeting.turnIndex;
       const [msg] = await tx
         .insert(meetingMessages)
@@ -225,8 +275,14 @@ export class MeetingsService {
           costCents: input.costCents ?? 0,
         })
         .returning();
-      return msg;
+      return { msg, companyId: updatedMeeting.companyId };
     });
+    publishLiveEvent({
+      companyId: result.companyId,
+      type: "meeting.message.added",
+      payload: { meetingId: input.meetingId, message: result.msg },
+    });
+    return result.msg;
   }
 
   async listOutcomes(meetingId: string) {
@@ -251,6 +307,14 @@ export class MeetingsService {
         approvedByOperator: !outcomeRequiresApproval(input.kind),
       })
       .returning();
+    const meeting = await this.getById(input.meetingId);
+    if (meeting) {
+      publishLiveEvent({
+        companyId: meeting.companyId,
+        type: "meeting.outcome.added",
+        payload: { meetingId: input.meetingId, outcome: created },
+      });
+    }
     return created;
   }
 
@@ -260,6 +324,16 @@ export class MeetingsService {
       .set({ approvedByOperator: true, approvedAt: new Date(), updatedAt: new Date() })
       .where(eq(meetingOutcomes.id, outcomeId))
       .returning();
+    if (updated) {
+      const meeting = await this.getById(updated.meetingId);
+      if (meeting) {
+        publishLiveEvent({
+          companyId: meeting.companyId,
+          type: "meeting.outcome.approved",
+          payload: { meetingId: updated.meetingId, outcome: updated },
+        });
+      }
+    }
     return updated;
   }
 

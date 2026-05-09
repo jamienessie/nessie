@@ -31,6 +31,7 @@ export const AGENT_ADAPTER_TYPES = [
   "process",
   "http",
   "acpx_local",
+  "azure_openai",
   "claude_local",
   "codex_local",
   "gemini_local",
@@ -521,6 +522,15 @@ export const LIVE_EVENT_TYPES = [
   "plugin.ui.updated",
   "plugin.worker.crashed",
   "plugin.worker.restarted",
+  // Meeting live-room events — fired by the meetings service so the
+  // /meetings/:id/room UI can stream updates without polling.
+  "meeting.message.added",
+  "meeting.transitioned",
+  "meeting.participant.added",
+  "meeting.outcome.added",
+  "meeting.outcome.approved",
+  "meeting.turn.starting",
+  "meeting.turn.failed",
 ] as const;
 export type LiveEventType = (typeof LIVE_EVENT_TYPES)[number];
 
