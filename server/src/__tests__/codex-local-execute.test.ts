@@ -550,7 +550,7 @@ describe("codex execute", () => {
     await fs.mkdir(workspace, { recursive: true });
     await writeFailingCodexCommand(
       commandPath,
-      "You've hit your usage limit for GPT-5.3-Codex-Spark. Switch to another model now, or try again at 11:31 PM.",
+      "You've hit your usage limit for GPT-5.5. Switch to another model now, or try again at 11:31 PM.",
     );
 
     const previousHome = process.env.HOME;
@@ -580,7 +580,7 @@ describe("codex execute", () => {
         config: {
           command: commandPath,
           cwd: workspace,
-          model: "gpt-5.3-codex-spark",
+          model: "gpt-5.5",
           promptTemplate: "Follow the paperclip heartbeat.",
         },
         context: {},

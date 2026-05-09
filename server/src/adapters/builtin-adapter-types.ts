@@ -5,6 +5,7 @@
  *   - claude_local       — Claude Code CLI (T1 subscription)
  *   - codex_local        — Codex CLI (T1 subscription)
  *   - openai_compatible  — workhorse for T2/T3 via the cost-tier proxy
+ *   - openrouter_compatible — remote OpenRouter catalog with live discovery
  *   - http_webhook       — external automations / human-in-the-loop
  *   - process / http     — adapter-plugin transports (always available)
  *
@@ -17,6 +18,7 @@ export const BUILTIN_ADAPTER_TYPES = new Set([
   "claude_local",
   "codex_local",
   "openai_compatible",
+  "openrouter_compatible",
   "http_webhook",
   "process",
   "http",

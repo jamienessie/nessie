@@ -24,6 +24,7 @@ const ENABLED_INVITE_ADAPTERS = new Set([
   "codex_local",
   "gemini_local",
   "opencode_local",
+  "openrouter_compatible",
   "pi_local",
   "cursor",
 ]);

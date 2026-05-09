@@ -54,10 +54,6 @@ const workspaceDirs = Array.from(
 
 function findWorkspaceLinkMismatches(workspaceDir: string): WorkspaceLinkMismatch[] {
   const nodeModulesDir = path.join(repoRoot, workspaceDir, "node_modules");
-  if (!existsSync(nodeModulesDir)) {
-    return [];
-  }
-
   const packageJson = readJsonFile(path.join(repoRoot, workspaceDir, "package.json"));
   const dependencies = {
     ...(packageJson.dependencies as Record<string, unknown> | undefined),
@@ -101,7 +97,19 @@ async function ensureWorkspaceLinksCurrent(workspaceDir: string) {
     const linkPath = path.join(repoRoot, mismatch.workspaceDir, "node_modules", ...mismatch.packageName.split("/"));
     await fs.mkdir(path.dirname(linkPath), { recursive: true });
     await fs.rm(linkPath, { recursive: true, force: true });
-    await fs.symlink(mismatch.expectedPath, linkPath);
+    try {
+      await fs.symlink(mismatch.expectedPath, linkPath);
+    } catch (error) {
+      const isWindows = process.platform === "win32";
+      const isSymlinkPermissionError =
+        error instanceof Error &&
+        "code" in error &&
+        (error as NodeJS.ErrnoException).code === "EPERM";
+      if (!isWindows || !isSymlinkPermissionError) {
+        throw error;
+      }
+      await fs.symlink(mismatch.expectedPath, linkPath, "junction");
+    }
   }
 
   const remainingMismatches = findWorkspaceLinkMismatches(workspaceDir);

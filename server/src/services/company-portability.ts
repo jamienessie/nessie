@@ -53,6 +53,7 @@ import {
   writePaperclipSkillSyncPreference,
 } from "@nessie/adapter-utils/server-utils";
 import { requireOpenCodeModelId } from "@nessie/adapter-opencode-local/server";
+import { requireOpenRouterModelId } from "@nessie/adapter-openrouter-compatible/server";
 import { findServerAdapter } from "../adapters/index.js";
 import { forbidden, notFound, unprocessable } from "../errors.js";
 import { ghFetch, gitHubApiBase, resolveRawGitHubUrl } from "./github-fetch.js";
@@ -2879,12 +2880,21 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
     adapterType: string,
     adapterConfig: Record<string, unknown>,
   ) {
-    if (adapterType !== "opencode_local") return;
+    if (adapterType === "opencode_local") {
+      try {
+        requireOpenCodeModelId(adapterConfig.model);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);
+      }
+      return;
+    }
+    if (adapterType !== "openrouter_compatible") return;
     try {
-      requireOpenCodeModelId(adapterConfig.model);
+      requireOpenRouterModelId(adapterConfig.model);
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
-      throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);
+      throw unprocessable(`Invalid openrouter_compatible adapterConfig: ${reason}`);
     }
   }
 

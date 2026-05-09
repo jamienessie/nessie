@@ -244,6 +244,7 @@ export function OnboardingWizard() {
       (check) =>
         check.code === "claude_anthropic_api_key_overrides_subscription"
     ) ?? false;
+  const showModelSelector = isLocalAdapter || adapterType === "openrouter_compatible";
   const shouldSuggestUnsetAnthropicApiKey =
     adapterType === "claude_local" &&
     adapterEnvResult?.status === "fail" &&
@@ -265,7 +266,7 @@ export function OnboardingWizard() {
       return [
         {
           provider: "models",
-          entries: [...filteredModels].sort((a, b) => a.id.localeCompare(b.id))
+          entries: [...filteredModels]
         }
       ];
     }
@@ -426,13 +427,15 @@ export function OnboardingWizard() {
     setLoading(true);
     setError(null);
     try {
-      if (adapterType === "opencode_local") {
-        if (!isValidOpenCodeModelId(model)) {
-          setError(
-            "OpenCode requires an explicit model in provider/model format."
-          );
-          return;
-        }
+      if (adapterType === "opencode_local" && !isValidOpenCodeModelId(model)) {
+        setError(
+          "OpenCode requires an explicit model in provider/model format."
+        );
+        return;
+      }
+      if (adapterType === "openrouter_compatible" && !model.trim()) {
+        setError("OpenRouter requires you to choose a model before continuing.");
+        return;
       }
 
       if (isLocalAdapter) {
@@ -840,7 +843,7 @@ export function OnboardingWizard() {
                   </div>
 
                   {/* Conditional adapter fields */}
-                  {isLocalAdapter && (
+                  {showModelSelector && (
                     <div className="space-y-3">
                       <div>
                         <label className="text-xs text-muted-foreground mb-1 block">
@@ -863,7 +866,7 @@ export function OnboardingWizard() {
                                 {selectedModel
                                   ? selectedModel.label
                                   : model ||
-                                    (adapterType === "opencode_local"
+                                    (adapterType === "opencode_local" || adapterType === "openrouter_compatible"
                                       ? "Select model (required)"
                                       : "Default")}
                               </span>
@@ -881,7 +884,7 @@ export function OnboardingWizard() {
                               onChange={(e) => setModelSearch(e.target.value)}
                               autoFocus
                             />
-                            {adapterType !== "opencode_local" && (
+                            {adapterType !== "opencode_local" && adapterType !== "openrouter_compatible" && (
                               <button
                                 className={cn(
                                   "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-accent/50",
@@ -1216,7 +1219,12 @@ export function OnboardingWizard() {
                     <Button
                       size="sm"
                       disabled={
-                        !agentName.trim() || loading || adapterEnvLoading
+                        !agentName.trim() ||
+                        loading ||
+                        adapterEnvLoading ||
+                        (adapterType === "opencode_local" || adapterType === "openrouter_compatible"
+                          ? !model.trim()
+                          : false)
                       }
                       onClick={handleStep2Next}
                     >

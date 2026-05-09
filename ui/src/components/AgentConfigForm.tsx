@@ -857,6 +857,8 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                       nextValues.model = DEFAULT_CURSOR_LOCAL_MODEL;
                     } else if (t === "opencode_local") {
                       nextValues.model = DEFAULT_OPENCODE_LOCAL_MODEL;
+                    } else if (t === "openrouter_compatible") {
+                      nextValues.model = "";
                     }
                     set!(nextValues);
                   } else {
@@ -876,6 +878,8 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                               ? DEFAULT_OPENCODE_LOCAL_MODEL
                             : t === "cursor"
                               ? DEFAULT_CURSOR_LOCAL_MODEL
+                            : t === "openrouter_compatible"
+                              ? ""
                               : "",
                         effort: "",
                         modelReasoningEffort: "",
@@ -993,20 +997,22 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 }
                 open={modelOpen}
                 onOpenChange={setModelOpen}
-                allowDefault={adapterType !== "opencode_local"}
-                required={adapterType === "opencode_local"}
+                allowDefault={adapterType !== "opencode_local" && adapterType !== "openrouter_compatible"}
+                required={adapterType === "opencode_local" || adapterType === "openrouter_compatible"}
                 groupByProvider={adapterType === "opencode_local"}
                 creatable
                 detectedModel={detectedModel}
                 detectedModelCandidates={[]}
-                onDetectModel={adapterType === "opencode_local"
+                onDetectModel={adapterType === "opencode_local" || adapterType === "openrouter_compatible"
                   ? undefined
                   : async () => {
                       const result = await refetchDetectedModel();
                       return result.data?.model ?? null;
                     }}
                 onRefreshModels={
-                  adapterType === "codex_local" || adapterType === "acpx_local"
+                  adapterType === "codex_local" ||
+                  adapterType === "acpx_local" ||
+                  adapterType === "openrouter_compatible"
                     ? handleRefreshModels
                     : undefined
                 }
@@ -1481,7 +1487,7 @@ function ModelDropdown({
       return [
         {
           provider: "models",
-          entries: [...filteredModels].sort((a, b) => a.id.localeCompare(b.id)),
+          entries: [...filteredModels],
         },
       ];
     }
@@ -1496,8 +1502,8 @@ function ModelDropdown({
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([provider, entries]) => ({
         provider,
-        entries: [...entries].sort((a, b) => a.id.localeCompare(b.id)),
-      }));
+        entries: [...entries],
+      })); 
   }, [filteredModels, groupByProvider]);
 
   async function handleDetectModel() {

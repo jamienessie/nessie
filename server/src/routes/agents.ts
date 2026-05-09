@@ -91,6 +91,7 @@ import { DEFAULT_CURSOR_LOCAL_MODEL } from "@nessie/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@nessie/adapter-gemini-local";
 import { DEFAULT_OPENCODE_LOCAL_MODEL } from "@nessie/adapter-opencode-local";
 import { requireOpenCodeModelId } from "@nessie/adapter-opencode-local/server";
+import { requireOpenRouterModelId } from "@nessie/adapter-openrouter-compatible/server";
 import {
   loadDefaultAgentInstructionsBundle,
   resolveDefaultAgentInstructionsBundleRole,
@@ -1046,12 +1047,22 @@ export function agentRoutes(
     adapterType: string | null | undefined,
     adapterConfig: Record<string, unknown>,
   ) {
-    if (adapterType !== "opencode_local") return;
-    try {
-      requireOpenCodeModelId(adapterConfig.model);
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);
+    if (adapterType === "opencode_local") {
+      try {
+        requireOpenCodeModelId(adapterConfig.model);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);
+      }
+      return;
+    }
+    if (adapterType === "openrouter_compatible") {
+      try {
+        requireOpenRouterModelId(adapterConfig.model);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : String(err);
+        throw unprocessable(`Invalid openrouter_compatible adapterConfig: ${reason}`);
+      }
     }
   }
 

@@ -50,20 +50,20 @@ describe("buildCodexExecArgs", () => {
 
   it("ignores fast mode for unsupported models", () => {
     const result = buildCodexExecArgs({
-      model: "gpt-5.3-codex",
+      model: "gpt-5.2",
       fastMode: true,
     });
 
     expect(result.fastModeRequested).toBe(true);
     expect(result.fastModeApplied).toBe(false);
     expect(result.fastModeIgnoredReason).toContain(
-      "currently only supported on gpt-5.4 or manually configured model IDs",
+      "currently only supported on gpt-5.5, gpt-5.4 or manually configured model IDs",
     );
     expect(result.args).toEqual([
       "exec",
       "--json",
       "--model",
-      "gpt-5.3-codex",
+      "gpt-5.2",
       "-",
     ]);
   });

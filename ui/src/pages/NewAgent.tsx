@@ -146,6 +146,11 @@ export function NewAgent() {
         setFormError("OpenCode requires an explicit model in provider/model format.");
         return;
       }
+    } else if (configValues.adapterType === "openrouter_compatible") {
+      if (!configValues.model.trim()) {
+        setFormError("OpenRouter requires you to choose a model before creating the agent.");
+        return;
+      }
     }
     createAgent.mutate(
       buildNewAgentHirePayload({
@@ -337,7 +342,11 @@ export function NewAgent() {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={!name.trim() || createAgent.isPending}
+                  disabled={
+                    !name.trim() ||
+                    createAgent.isPending ||
+                    (configValues.adapterType === "openrouter_compatible" && !configValues.model.trim())
+                  }
                   onClick={handleSubmit}
                 >
                   {createAgent.isPending ? "Creating…" : "Create agent"}

@@ -10,6 +10,7 @@ import {
   Bot,
   Code,
   Gem,
+  Globe,
   MousePointer2,
   Sparkles,
   Terminal,
@@ -82,6 +83,11 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     label: "OpenCode",
     description: "Local multi-provider agent",
     icon: OpenCodeLogoIcon,
+  },
+  openrouter_compatible: {
+    label: "OpenRouter",
+    description: "Remote OpenRouter model catalog",
+    icon: Globe,
   },
   hermes_local: {
     label: "Hermes Agent",

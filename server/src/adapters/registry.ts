@@ -43,6 +43,18 @@ import {
   modelProfiles as openAiCompatibleModelProfiles,
 } from "@nessie/adapter-openai-compatible";
 import {
+  execute as openRouterCompatibleExecute,
+  listOpenRouterModels,
+  refreshOpenRouterModels,
+  testEnvironment as openRouterCompatibleTestEnvironment,
+  sessionCodec as openRouterCompatibleSessionCodec,
+} from "@nessie/adapter-openrouter-compatible/server";
+import {
+  agentConfigurationDoc as openRouterCompatibleAgentConfigurationDoc,
+  models as openRouterCompatibleModels,
+  modelProfiles as openRouterCompatibleModelProfiles,
+} from "@nessie/adapter-openrouter-compatible";
+import {
   execute as httpWebhookExecute,
   testEnvironment as httpWebhookTestEnvironment,
   sessionCodec as httpWebhookSessionCodec,
@@ -143,6 +155,22 @@ const openAiCompatibleAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openAiCompatibleAgentConfigurationDoc,
 };
 
+const openRouterCompatibleAdapter: ServerAdapterModule = {
+  type: "openrouter_compatible",
+  execute: openRouterCompatibleExecute,
+  testEnvironment: openRouterCompatibleTestEnvironment,
+  sessionCodec: openRouterCompatibleSessionCodec,
+  sessionManagement: getAdapterSessionManagement("openrouter_compatible") ?? undefined,
+  models: openRouterCompatibleModels,
+  modelProfiles: openRouterCompatibleModelProfiles,
+  listModels: listOpenRouterModels,
+  refreshModels: refreshOpenRouterModels,
+  supportsLocalAgentJwt: false,
+  supportsInstructionsBundle: false,
+  requiresMaterializedRuntimeSkills: false,
+  agentConfigurationDoc: openRouterCompatibleAgentConfigurationDoc,
+};
+
 const httpWebhookAdapter: ServerAdapterModule = {
   type: "http_webhook",
   execute: httpWebhookExecute,
@@ -176,6 +204,7 @@ function registerBuiltInAdapters() {
     claudeLocalAdapter,
     codexLocalAdapter,
     openAiCompatibleAdapter,
+    openRouterCompatibleAdapter,
     httpWebhookAdapter,
     processAdapter,
     httpAdapter,
