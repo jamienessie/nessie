@@ -67,16 +67,26 @@ function KanbanColumn({
 
   const isEmpty = issues.length === 0;
 
+  const statusColors: Record<string, string> = {
+    backlog: "#DDD2FF",
+    todo: "#C8E5FF",
+    in_progress: "#FFF1B8",
+    in_review: "#E5D3FF",
+    blocked: "#FFD1C4",
+    done: "#C2EED8",
+    cancelled: "#FFF8E8",
+  };
+
   return (
     <div className={`flex flex-col shrink-0 transition-[width,min-width] ${isEmpty && !isOver ? "min-w-[48px] w-[48px]" : "min-w-[260px] w-[260px]"}`}>
-      <div className={`flex items-center gap-2 px-2 py-2 mb-1 ${isEmpty && !isOver ? "justify-center" : ""}`}>
+      <div className={`flex items-center gap-2 px-2 py-1.5 mb-1.5 border-[2px] border-[#0d0c10] ${isEmpty && !isOver ? "justify-center" : ""}`} style={{ background: statusColors[status] || "#FFF8E8" }}>
         <StatusIcon status={status} />
         {(!isEmpty || isOver) && (
           <>
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <span className="text-[10px] font-extrabold uppercase tracking-[1.2px] font-mono text-[#0d0c10]">
               {statusLabel(status)}
             </span>
-            <span className="text-xs text-muted-foreground/60 ml-auto tabular-nums">
+            <span className="text-[10px] font-mono font-bold text-[#5a525e] ml-auto tabular-nums">
               {issues.length}
             </span>
           </>
@@ -84,9 +94,10 @@ function KanbanColumn({
       </div>
       <div
         ref={setNodeRef}
-        className={`flex-1 min-h-[120px] rounded-md p-1 space-y-1 transition-colors ${
-          isOver ? "bg-accent/40" : "bg-muted/20"
+        className={`flex-1 min-h-[120px] p-1 space-y-1.5 transition-colors ${
+          isOver ? "bg-[#FFF1B8]/30" : ""
         }`}
+        style={{ border: "2px solid #0d0c10", background: "#fffaf0", boxShadow: "3px 3px 0 0 #0d0c10" }}
       >
         <SortableContext
           items={issues.map((i) => i.id)}
@@ -144,9 +155,9 @@ function KanbanCard({
       style={style}
       {...attributes}
       {...listeners}
-      className={`rounded-md border bg-card p-2.5 cursor-grab active:cursor-grabbing transition-shadow ${
+      className={`border-[2px] border-[#0d0c10] bg-[#fffaf0] p-2.5 cursor-grab active:cursor-grabbing transition-all ${
         isDragging && !isOverlay ? "opacity-30" : ""
-      } ${isOverlay ? "shadow-lg ring-1 ring-primary/20" : "hover:shadow-sm"}`}
+      } ${isOverlay ? "shadow-[6px_6px_0_0_#0d0c10]" : "hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[5px_5px_0_0_#0d0c10]"}`}
     >
       <Link
         to={`/issues/${issue.identifier ?? issue.id}`}
@@ -158,27 +169,24 @@ function KanbanCard({
         }}
       >
         <div className="flex items-start gap-1.5 mb-1.5">
-          <span className="text-xs text-muted-foreground font-mono shrink-0">
+          <span className="text-[10px] text-[#5a525e] font-mono font-bold shrink-0">
             {issue.identifier ?? issue.id.slice(0, 8)}
           </span>
           {isSuccessfulRunHandoffRequired(issue) ? (
             <span
-              className="inline-flex items-center gap-1 rounded-full border border-amber-400/45 bg-amber-50/60 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-300/35 dark:bg-amber-400/10 dark:text-amber-300"
+              className="inline-flex items-center gap-1 border-[1.5px] border-[#0d0c10] bg-[#FFF1B8] px-1.5 py-0.5 text-[9.5px] font-extrabold text-[#0d0c10] font-mono uppercase"
               title="This issue needs a next step"
               aria-label="Needs next step"
             >
               <AlertTriangle className="h-3 w-3" />
-              Next step
+              NEXT STEP
             </span>
           ) : null}
           {isLive && (
-            <span className="relative flex h-2 w-2 shrink-0 mt-0.5">
-              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-            </span>
+            <span className="w-2 h-2 bg-[#27D17F] border border-[#0d0c10] stack-pulse shrink-0 mt-0.5" />
           )}
         </div>
-        <p className="text-sm leading-snug line-clamp-2 mb-2">{issue.title}</p>
+        <p className="text-[13px] font-semibold leading-snug line-clamp-2 mb-2 text-[#0d0c10]">{issue.title}</p>
         <div className="flex items-center gap-2">
           <PriorityIcon priority={issue.priority} />
           {issue.assigneeAgentId && (() => {
@@ -186,7 +194,7 @@ function KanbanCard({
             return name ? (
               <Identity name={name} size="xs" />
             ) : (
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-[10px] text-[#5a525e] font-mono font-bold">
                 {issue.assigneeAgentId.slice(0, 8)}
               </span>
             );

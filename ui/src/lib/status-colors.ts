@@ -3,9 +3,6 @@
  *
  * Every component that renders a status indicator (StatusIcon, StatusBadge,
  * agent status dots, etc.) should import from here so colors stay consistent.
- *
- * Dark-mode tints use `bg-{hue}-500/20 text-{hue}-200` for stronger contrast
- * against dark surfaces — reads more confidently than the older /50 + 300 pair.
  */
 
 // ---------------------------------------------------------------------------
@@ -14,29 +11,29 @@
 
 /** StatusIcon circle: text + border classes */
 export const issueStatusIcon: Record<string, string> = {
-  backlog: "text-muted-foreground border-muted-foreground",
-  todo: "text-blue-600 border-blue-600 dark:text-blue-400 dark:border-blue-400",
-  in_progress: "text-yellow-600 border-yellow-600 dark:text-yellow-400 dark:border-yellow-400",
-  in_review: "text-violet-600 border-violet-600 dark:text-violet-400 dark:border-violet-400",
-  done: "text-green-600 border-green-600 dark:text-green-400 dark:border-green-400",
-  cancelled: "text-neutral-500 border-neutral-500",
-  blocked: "text-red-600 border-red-600 dark:text-red-400 dark:border-red-400",
+  backlog: "text-[#5a525e] border-[#5a525e]",
+  todo: "text-[#1FA7FF] border-[#1FA7FF]",
+  in_progress: "text-[#FFC83A] border-[#FFC83A]",
+  in_review: "text-[#7C5CFF] border-[#7C5CFF]",
+  done: "text-[#27D17F] border-[#27D17F]",
+  cancelled: "text-[#5a525e] border-[#5a525e]",
+  blocked: "text-[#FF4D2E] border-[#FF4D2E]",
 };
 
-export const issueStatusIconDefault = "text-muted-foreground border-muted-foreground";
+export const issueStatusIconDefault = "text-[#5a525e] border-[#5a525e]";
 
 /** Text-only color for issue statuses (dropdowns, labels) */
 export const issueStatusText: Record<string, string> = {
-  backlog: "text-muted-foreground",
-  todo: "text-blue-600 dark:text-blue-400",
-  in_progress: "text-yellow-600 dark:text-yellow-400",
-  in_review: "text-violet-600 dark:text-violet-400",
-  done: "text-green-600 dark:text-green-400",
-  cancelled: "text-neutral-500",
-  blocked: "text-red-600 dark:text-red-400",
+  backlog: "text-[#5a525e]",
+  todo: "text-[#1FA7FF]",
+  in_progress: "text-[#FFC83A]",
+  in_review: "text-[#7C5CFF]",
+  done: "text-[#27D17F]",
+  cancelled: "text-[#5a525e]",
+  blocked: "text-[#FF4D2E]",
 };
 
-export const issueStatusTextDefault = "text-muted-foreground";
+export const issueStatusTextDefault = "text-[#5a525e]";
 
 // ---------------------------------------------------------------------------
 // Badge colors — used by StatusBadge for all entity types
@@ -44,72 +41,72 @@ export const issueStatusTextDefault = "text-muted-foreground";
 
 export const statusBadge: Record<string, string> = {
   // Agent statuses
-  active: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200",
-  running: "bg-cyan-100 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-200 animate-pulse",
-  scheduled_retry: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200 animate-pulse",
-  paused: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-200",
-  idle: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200",
-  archived: "bg-muted text-muted-foreground",
+  active: "bg-[#C2EED8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  running: "bg-[#C8E5FF] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  scheduled_retry: "bg-[#CFDDF8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  paused: "bg-[#FFE0BB] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  idle: "bg-[#FFF1B8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  archived: "bg-[#FFF8E8] text-[#5a525e] border-[1.5px] border-[#0d0c10]",
 
   // Goal statuses
-  planned: "bg-muted text-muted-foreground",
-  achieved: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200",
-  completed: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200",
+  planned: "bg-[#FFF8E8] text-[#5a525e] border-[1.5px] border-[#0d0c10]",
+  achieved: "bg-[#C2EED8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  completed: "bg-[#C2EED8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
 
   // Run statuses
-  failed: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200",
-  timed_out: "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-200",
-  succeeded: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200",
-  ok: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200",
-  warning: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200",
-  error: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200",
-  info: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-200",
-  terminated: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200",
-  pending: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200",
+  failed: "bg-[#FFD1C4] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  timed_out: "bg-[#FFE0BB] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  succeeded: "bg-[#C2EED8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  ok: "bg-[#C2EED8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  warning: "bg-[#FFF1B8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  error: "bg-[#FFD1C4] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  info: "bg-[#C8E5FF] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  terminated: "bg-[#FFD1C4] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  pending: "bg-[#FFF1B8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
 
   // Approval statuses
-  pending_approval: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200",
-  revision_requested: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200",
-  approved: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200",
-  rejected: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200",
+  pending_approval: "bg-[#FFF1B8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  revision_requested: "bg-[#FFF1B8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  approved: "bg-[#C2EED8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  rejected: "bg-[#FFD1C4] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
 
   // Issue statuses — consistent hues with issueStatusIcon above
-  backlog: "bg-muted text-muted-foreground",
-  todo: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200",
-  in_progress: "bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-200",
-  in_review: "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-200",
-  blocked: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200",
-  done: "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-200",
-  cancelled: "bg-muted text-muted-foreground",
+  backlog: "bg-[#FFF8E8] text-[#5a525e] border-[1.5px] border-[#0d0c10]",
+  todo: "bg-[#C8E5FF] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  in_progress: "bg-[#FFF1B8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  in_review: "bg-[#DDD2FF] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  blocked: "bg-[#FFD1C4] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  done: "bg-[#C2EED8] text-[#0d0c10] border-[1.5px] border-[#0d0c10]",
+  cancelled: "bg-[#FFF8E8] text-[#5a525e] border-[1.5px] border-[#0d0c10]",
 };
 
-export const statusBadgeDefault = "bg-muted text-muted-foreground";
+export const statusBadgeDefault = "bg-[#FFF8E8] text-[#5a525e] border-[1.5px] border-[#0d0c10]";
 
 // ---------------------------------------------------------------------------
 // Agent status dot — solid background for small indicator dots
 // ---------------------------------------------------------------------------
 
 export const agentStatusDot: Record<string, string> = {
-  running: "bg-cyan-400 animate-pulse",
-  active: "bg-green-400",
-  paused: "bg-yellow-400",
-  idle: "bg-yellow-400",
-  pending_approval: "bg-amber-400",
-  error: "bg-red-400",
-  archived: "bg-neutral-400",
+  running: "bg-[#1FA7FF] stack-pulse",
+  active: "bg-[#27D17F]",
+  paused: "bg-[#FF8A1A]",
+  idle: "bg-[#FFC83A]",
+  pending_approval: "bg-[#FFB400]",
+  error: "bg-[#FF4D2E]",
+  archived: "bg-[#5a525e]",
 };
 
-export const agentStatusDotDefault = "bg-neutral-400";
+export const agentStatusDotDefault = "bg-[#5a525e]";
 
 // ---------------------------------------------------------------------------
 // Priority colors
 // ---------------------------------------------------------------------------
 
 export const priorityColor: Record<string, string> = {
-  critical: "text-red-600 dark:text-red-400",
-  high: "text-orange-600 dark:text-orange-400",
-  medium: "text-yellow-600 dark:text-yellow-400",
-  low: "text-blue-600 dark:text-blue-400",
+  critical: "text-[#FF4D2E]",
+  high: "text-[#FF8A1A]",
+  medium: "text-[#FFC83A]",
+  low: "text-[#1FA7FF]",
 };
 
-export const priorityColorDefault = "text-yellow-600 dark:text-yellow-400";
+export const priorityColorDefault = "text-[#FFC83A]";

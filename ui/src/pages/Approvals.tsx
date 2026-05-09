@@ -12,6 +12,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { ShieldCheck } from "lucide-react";
 import { ApprovalCard } from "../components/ApprovalCard";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { StackPanel, StackCard } from "@/components/stack";
 
 type StatusFilter = "pending" | "all";
 
@@ -104,31 +105,41 @@ export function Approvals() {
       {actionError && <p className="text-sm text-destructive">{actionError}</p>}
 
       {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
+        <StackCard className="flex flex-col items-center justify-center py-16 text-center">
           <ShieldCheck className="h-8 w-8 text-muted-foreground/30 mb-3" />
           <p className="text-sm text-muted-foreground">
             {statusFilter === "pending" ? "No pending approvals." : "No approvals yet."}
           </p>
-        </div>
+        </StackCard>
       )}
 
       {filtered.length > 0 && (
-        <div className="grid gap-3">
-          {filtered.map((approval) => (
-            <ApprovalCard
-              key={approval.id}
-              approval={approval}
-              requesterAgent={approval.requestedByAgentId ? (agents ?? []).find((a) => a.id === approval.requestedByAgentId) ?? null : null}
-              onApprove={() => approveMutation.mutate(approval.id)}
-              onReject={() => rejectMutation.mutate(approval.id)}
-              detailLink={`/approvals/${approval.id}`}
-              isPending={approveMutation.isPending || rejectMutation.isPending}
-              pendingAction={
-                approveMutation.isPending ? "approve" : rejectMutation.isPending ? "reject" : null
-              }
-            />
-          ))}
-        </div>
+        <StackPanel
+          title={
+            <span className="flex items-center gap-2">
+              <span>Approvals</span>
+              <span className="font-mono text-[10px] font-bold">{filtered.length} total</span>
+            </span>
+          }
+          color="#FF6B9A"
+        >
+          <div className="grid gap-3 p-3">
+            {filtered.map((approval) => (
+              <ApprovalCard
+                key={approval.id}
+                approval={approval}
+                requesterAgent={approval.requestedByAgentId ? (agents ?? []).find((a) => a.id === approval.requestedByAgentId) ?? null : null}
+                onApprove={() => approveMutation.mutate(approval.id)}
+                onReject={() => rejectMutation.mutate(approval.id)}
+                detailLink={`/approvals/${approval.id}`}
+                isPending={approveMutation.isPending || rejectMutation.isPending}
+                pendingAction={
+                  approveMutation.isPending ? "approve" : rejectMutation.isPending ? "reject" : null
+                }
+              />
+            ))}
+          </div>
+        </StackPanel>
       )}
     </div>
   );

@@ -61,6 +61,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { CircleDot, Plus, ArrowUpDown, Layers, Check, ChevronRight, List, ListTree, Columns3, User, Search, CircleSlash2 } from "lucide-react";
+import { StackButton, StackCard, StackPanel } from "@/components/stack";
 import { KanbanBoard } from "./KanbanBoard";
 import { buildIssueTree, countDescendants } from "../lib/issue-tree";
 import { buildSubIssueDefaultsForViewer } from "../lib/subIssueDefaults";
@@ -475,8 +476,8 @@ function SubIssueProgressSummaryStrip({
   const showCostSummary = !!costSummary && (costSummary.runCount > 0 || totalTokens > 0);
 
   return (
-    <div className="border border-border bg-background p-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <StackPanel title="Sub-issues" color="#FFC83A">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between p-3">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <span className="font-medium text-foreground">
@@ -526,7 +527,7 @@ function SubIssueProgressSummaryStrip({
           </div>
         </div>
 
-        <div className="min-w-0 border border-border bg-background px-3 py-2 text-sm lg:w-72">
+        <div className="min-w-0 stack-card px-3 py-2 text-sm lg:w-72">
           {target && targetIssue ? (
             <>
               <div className="text-xs font-medium text-muted-foreground">
@@ -553,7 +554,7 @@ function SubIssueProgressSummaryStrip({
           )}
         </div>
       </div>
-    </div>
+    </StackPanel>
   );
 }
 
@@ -1279,10 +1280,10 @@ export function IssuesList({
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-          <Button size="sm" variant="outline" onClick={() => openCreateIssueDialog()}>
-            <Plus className="h-4 w-4 sm:mr-1" />
+          <StackButton color="#FFC83A" onClick={() => openCreateIssueDialog()}>
+            <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{createButtonLabel}</span>
-          </Button>
+          </StackButton>
           <IssueSearchInput
             value={issueSearch}
             onDebouncedChange={(nextSearch) => {
@@ -1294,34 +1295,34 @@ export function IssuesList({
 
         <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
           {/* View mode toggle */}
-          <div className="flex items-center border border-border rounded-md overflow-hidden mr-1">
-            <button
-              className={`p-1.5 transition-colors ${viewState.viewMode === "list" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          <div className="flex items-center mr-1">
+            <StackButton
+              color={viewState.viewMode === "list" ? "#FFC83A" : undefined}
               onClick={() => updateView({ viewMode: "list" })}
+              className="rounded-none"
               title="List view"
             >
               <List className="h-3.5 w-3.5" />
-            </button>
-            <button
-              className={`p-1.5 transition-colors ${viewState.viewMode === "board" ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            </StackButton>
+            <StackButton
+              color={viewState.viewMode === "board" ? "#FFC83A" : undefined}
               onClick={() => updateView({ viewMode: "board" })}
+              className="rounded-none"
               title="Board view"
             >
               <Columns3 className="h-3.5 w-3.5" />
-            </button>
+            </StackButton>
           </div>
 
           {viewState.viewMode === "list" && (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className={cn("hidden h-8 w-8 shrink-0 sm:inline-flex", viewState.nestingEnabled && "bg-accent")}
+            <StackButton
+              color={viewState.nestingEnabled ? "#FFC83A" : undefined}
               onClick={() => updateView({ nestingEnabled: !viewState.nestingEnabled })}
+              className="hidden sm:inline-flex"
               title={viewState.nestingEnabled ? "Disable parent-child nesting" : "Enable parent-child nesting"}
             >
               <ListTree className="h-3.5 w-3.5" />
-            </Button>
+            </StackButton>
           )}
 
           <IssueColumnPicker

@@ -9,6 +9,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { Button } from "@/components/ui/button";
 import type { Agent } from "@nessie/shared";
+import { StackCard, StackButton, StackKpi, StackChip } from "@/components/stack";
 
 const NO_COMPANY = "__none__";
 
@@ -19,17 +20,17 @@ function formatCents(cents: number): string {
   return dollars >= 100 ? `$${Math.round(dollars).toLocaleString()}` : `$${dollars.toFixed(2)}`;
 }
 
-function tierTone(tier: string) {
-  if (tier === "T1") return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
-  if (tier === "T2") return "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400";
-  return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
+function tierColor(tier: string) {
+  if (tier === "T1") return "#FFE6B5";
+  if (tier === "T2") return "#DDD2FF";
+  return "#C2EED8";
 }
 
 function DepartmentCard({ dept, agents }: { dept: Department; agents: Agent[] }) {
   const swatch = dept.color || "oklch(0.7 0 0)";
   return (
-    <div className="border border-border bg-card">
-      <div className="flex items-start gap-3 border-b border-border px-4 py-3">
+    <StackCard accent={swatch}>
+      <div className="flex items-start gap-3 border-b-[1.5px] border-[#0d0c10] px-4 py-3">
         <div
           aria-hidden
           className="mt-1 h-3 w-3 rounded-sm shrink-0"
@@ -46,39 +47,25 @@ function DepartmentCard({ dept, agents }: { dept: Department; agents: Agent[] })
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-px border-b border-border bg-border">
-        <div className="bg-card p-3">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Tier</div>
-          <div className="mt-1 inline-flex items-center">
-            <span className={`px-1.5 py-0.5 text-[11px] font-mono ${tierTone(dept.defaultPreferredTier)}`}>
-              {dept.defaultPreferredTier}
-            </span>
-          </div>
+      <div className="grid grid-cols-3 gap-px border-b-[1.5px] border-[#0d0c10] bg-[#0d0c10]">
+        <div className="bg-[#fffaf0] p-3">
+          <StackKpi label="Tier" big={dept.defaultPreferredTier} color={tierColor(dept.defaultPreferredTier)} />
         </div>
-        <div className="bg-card p-3">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Budget / mo</div>
-          <div className="mt-1 text-sm tabular-nums">{formatCents(dept.defaultBudgetMonthlyCents)}</div>
+        <div className="bg-[#fffaf0] p-3">
+          <StackKpi label="Budget / mo" big={formatCents(dept.defaultBudgetMonthlyCents)} color="#FF3FA4" />
         </div>
-        <div className="bg-card p-3">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Headcount</div>
-          <div className="mt-1 text-sm tabular-nums">{agents.length}</div>
+        <div className="bg-[#fffaf0] p-3">
+          <StackKpi label="Headcount" big={String(agents.length)} color="#FF3FA4" />
         </div>
       </div>
 
       <div className="space-y-3 px-4 py-3">
         {dept.allowedTools.length > 0 && (
           <div>
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Allowed tools
-            </div>
+            <div className="stack-mono-label">Allowed tools</div>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {dept.allowedTools.map((tool) => (
-                <code
-                  key={tool}
-                  className="border border-border px-1.5 py-0.5 text-[11px] font-mono"
-                >
-                  {tool}
-                </code>
+                <StackChip key={tool} color="#FFF8E8">{tool}</StackChip>
               ))}
             </div>
           </div>
@@ -86,9 +73,7 @@ function DepartmentCard({ dept, agents }: { dept: Department; agents: Agent[] })
 
         {dept.qualityStandards.length > 0 && (
           <div>
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Quality standards
-            </div>
+            <div className="stack-mono-label">Quality standards</div>
             <ul className="mt-1.5 space-y-1 text-xs leading-5 text-muted-foreground">
               {dept.qualityStandards.map((standard, i) => (
                 <li key={i} className="flex gap-2">
@@ -102,16 +87,12 @@ function DepartmentCard({ dept, agents }: { dept: Department; agents: Agent[] })
 
         {agents.length > 0 && (
           <div>
-            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-              Roster
-            </div>
+            <div className="stack-mono-label">Roster</div>
             <ul className="mt-1.5 space-y-0.5 text-xs">
               {agents.slice(0, 8).map((a) => (
                 <li key={a.id} className="flex items-center justify-between gap-2">
                   <span className="truncate">{a.name}</span>
-                  <span className="text-muted-foreground text-[10px] font-mono uppercase shrink-0">
-                    {(a as Agent & { tier?: string }).tier ?? "—"}
-                  </span>
+                  <StackChip color={tierColor((a as Agent & { tier?: string }).tier ?? "")}>{(a as Agent & { tier?: string }).tier ?? "—"}</StackChip>
                 </li>
               ))}
               {agents.length > 8 && (
@@ -121,7 +102,7 @@ function DepartmentCard({ dept, agents }: { dept: Department; agents: Agent[] })
           </div>
         )}
       </div>
-    </div>
+    </StackCard>
   );
 }
 
@@ -203,14 +184,13 @@ export function Departments() {
           {departments.length} department{departments.length === 1 ? "" : "s"} ·{" "}
           {agents?.length ?? 0} agent{(agents?.length ?? 0) === 1 ? "" : "s"} assigned
         </p>
-        <Button
-          variant="outline"
-          size="sm"
+        <StackButton
+          color="#FF3FA4"
           onClick={() => seedMutation.mutate()}
           disabled={seedMutation.isPending}
         >
           {seedMutation.isPending ? "Seeding…" : "Seed missing defaults"}
-        </Button>
+        </StackButton>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">

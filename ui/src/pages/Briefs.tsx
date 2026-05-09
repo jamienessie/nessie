@@ -6,6 +6,7 @@ import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { EmptyState } from "../components/EmptyState";
 import { Button } from "@/components/ui/button";
+import { StackPanel, StackButton, StackKpi, StackChip } from "@/components/stack";
 
 const PERIODS: BriefPeriod[] = ["daily", "weekly", "monthly"];
 
@@ -42,12 +43,12 @@ function SectionTable({ rows }: { rows: Array<Record<string, unknown>> }) {
     }
   }
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto p-2">
       <table className="w-full text-xs">
-        <thead className="bg-muted/50 text-muted-foreground">
-          <tr>
+        <thead>
+          <tr className="border-b-2 border-[#0d0c10]">
             {keys.map((k) => (
-              <th key={k} className="px-2 py-1.5 text-left font-mono uppercase tracking-wider text-[10px]">
+              <th key={k} className="px-2 py-1.5 text-left font-mono uppercase tracking-wider text-[10px] text-muted-foreground">
                 {k}
               </th>
             ))}
@@ -55,7 +56,7 @@ function SectionTable({ rows }: { rows: Array<Record<string, unknown>> }) {
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={i} className="border-b border-border last:border-b-0 hover:bg-accent/30">
+            <tr key={i} className="border-b-[1.5px] border-[#0d0c10] last:border-b-0 hover:bg-[#FFF1B8]/30">
               {keys.map((k) => (
                 <td key={k} className="px-2 py-1.5 align-top">
                   <span className="font-mono text-[11px]">{renderCellValue(row[k])}</span>
@@ -70,18 +71,12 @@ function SectionTable({ rows }: { rows: Array<Record<string, unknown>> }) {
 }
 
 function CostSummary({ costs }: { costs: ExecutiveBrief["costSummary"] }) {
-  const tile = (label: string, cents: number, tone: string) => (
-    <div className="border border-border p-3">
-      <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-lg font-semibold tabular-nums ${tone}`}>{formatCents(cents)}</div>
-    </div>
-  );
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {tile("T1 (subscription)", costs.T1, "text-amber-600 dark:text-amber-400")}
-      {tile("T2 (paid API)", costs.T2, "text-indigo-600 dark:text-indigo-400")}
-      {tile("T3 (free/cheap)", costs.T3, "text-emerald-600 dark:text-emerald-400")}
-      {tile("Total", costs.total, "")}
+      <StackKpi label="T1 (subscription)" big={formatCents(costs.T1)} color="#FFB400" />
+      <StackKpi label="T2 (paid API)" big={formatCents(costs.T2)} color="#7C5CFF" />
+      <StackKpi label="T3 (free/cheap)" big={formatCents(costs.T3)} color="#27D17F" />
+      <StackKpi label="Total" big={formatCents(costs.total)} color="#0d0c10" />
     </div>
   );
 }
@@ -89,40 +84,36 @@ function CostSummary({ costs }: { costs: ExecutiveBrief["costSummary"] }) {
 function BriefView({ brief }: { brief: ExecutiveBrief }) {
   return (
     <div className="space-y-4">
-      <div className="border border-border bg-card p-4">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base font-semibold">
-            {brief.period[0].toUpperCase()}{brief.period.slice(1)} brief
-          </h2>
-          <code className="text-[10px] font-mono text-muted-foreground">
-            {new Date(brief.range.fromIso).toLocaleString()} → {new Date(brief.range.toIso).toLocaleString()}
-          </code>
+      <StackPanel
+        title={
+          <span className="flex items-center gap-2">
+            <span>{brief.period[0].toUpperCase()}{brief.period.slice(1)} brief</span>
+            <StackChip color="#FFE6B5">{new Date(brief.range.fromIso).toLocaleDateString()} → {new Date(brief.range.toIso).toLocaleDateString()}</StackChip>
+          </span>
+        }
+        color="#FFB400"
+        right={<span className="font-mono text-[10px] font-bold">{brief.sections.length} sections</span>}
+      >
+        <div className="p-4 space-y-3">
+          <div className="stack-mono-label">Cost summary</div>
+          <CostSummary costs={brief.costSummary} />
         </div>
-        <div className="mt-3">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Cost summary</div>
-          <div className="mt-2"><CostSummary costs={brief.costSummary} /></div>
-        </div>
-      </div>
+      </StackPanel>
 
       {brief.sections.map((section, i) => (
-        <div key={i} className="border border-border bg-card">
-          <div className="flex items-center justify-between border-b border-border px-3 py-2">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              {section.heading}
-            </h3>
-            <span className="text-[10px] tabular-nums text-muted-foreground">
-              {section.rows.length} row{section.rows.length === 1 ? "" : "s"}
-            </span>
-          </div>
+        <StackPanel
+          key={i}
+          title={section.heading}
+          color="#FFB400"
+          right={<span className="font-mono text-[10px] font-bold">{section.rows.length} row{section.rows.length === 1 ? "" : "s"}</span>}
+        >
           <SectionTable rows={section.rows} />
-        </div>
+        </StackPanel>
       ))}
 
       {brief.citations.length > 0 && (
-        <div className="border border-dashed border-border p-3">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-            Citations
-          </div>
+        <div className="stack-card p-3 border-dashed" style={{ borderStyle: "dashed" }}>
+          <div className="stack-mono-label">Citations</div>
           <ul className="mt-1 space-y-0.5">
             {brief.citations.map((c, i) => (
               <li key={i} className="font-mono text-[11px] text-muted-foreground">{c}</li>
@@ -158,23 +149,22 @@ export function Briefs() {
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-1">
           {PERIODS.map((p) => (
-            <button
+            <StackButton
               key={p}
-              type="button"
+              color={period === p ? "#FFB400" : undefined}
+              textColor={period === p ? "#0d0c10" : undefined}
               onClick={() => setPeriod(p)}
-              className={`border px-2 py-1 text-[11px] uppercase tracking-wider ${
-                period === p
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border text-muted-foreground hover:bg-accent"
-              }`}
             >
               {p}
-            </button>
+            </StackButton>
           ))}
         </div>
-        <Button size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+        <StackButton
+          color="#FFB400"
+          onClick={() => mutation.mutate()}
+        >
           {mutation.isPending ? "Composing…" : `Compose ${period} brief`}
-        </Button>
+        </StackButton>
       </div>
 
       {mutation.error && (

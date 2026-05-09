@@ -45,7 +45,7 @@ function OrgTreeNode({
     <div>
       <Link
         to={hrefFn(node.id)}
-        className="flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer hover:bg-accent/50 no-underline text-inherit"
+        className="flex items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer hover:bg-[#DDD2FF]/30 no-underline text-inherit"
         style={{ paddingLeft: `${depth * 16 + 12}px` }}
       >
         {hasChildren ? (
@@ -66,20 +66,20 @@ function OrgTreeNode({
         )}
         <span
           className={cn(
-            "h-2 w-2 rounded-full shrink-0",
+            "h-2.5 w-2.5 rounded-full shrink-0 border-[1.5px] border-[#0d0c10]",
             node.status === "active"
-              ? "bg-green-400"
+              ? "bg-[#27D17F]"
               : node.status === "paused"
-                ? "bg-yellow-400"
+                ? "bg-[#FF8A1A]"
                 : node.status === "pending_approval"
-                  ? "bg-amber-400"
+                  ? "bg-[#FFB400]"
                 : node.status === "error"
-                  ? "bg-red-400"
-                  : "bg-neutral-400"
+                  ? "bg-[#FF4D2E]"
+                  : "bg-[#5a525e]"
           )}
         />
-        <span className="font-medium flex-1">{node.name}</span>
-        <span className="text-xs text-muted-foreground">{node.role}</span>
+        <span className="font-semibold flex-1 text-[#0d0c10]">{node.name}</span>
+        <span className="text-xs font-mono font-bold text-[#5a525e]">{node.role}</span>
         <StatusBadge status={node.status} />
       </Link>
       {hasChildren && expanded && (
@@ -123,8 +123,14 @@ export function Org() {
       )}
 
       {data && data.length > 0 && (
-        <div className="border border-border py-1">
-          <OrgTree nodes={data} hrefFn={(id) => `/agents/${id}`} />
+        <div className="border-[2px] border-[#0d0c10] bg-[#fffaf0]" style={{ boxShadow: "4px 4px 0 0 #0d0c10" }}>
+          <div className="border-b-[2px] border-[#0d0c10] px-3 py-1.5 bg-[#7C5CFF] flex items-center gap-2">
+            <span className="w-3 h-3 rounded-full bg-[#0d0c10]" />
+            <span className="text-[12px] font-extrabold tracking-wide text-[#0d0c10]">ORG CHART</span>
+          </div>
+          <div className="py-1">
+            <OrgTree nodes={data} hrefFn={(id) => `/agents/${id}`} />
+          </div>
         </div>
       )}
     </div>

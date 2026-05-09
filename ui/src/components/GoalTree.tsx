@@ -50,7 +50,7 @@ function GoalNode({ goal, children, allGoals, depth, goalLink, onSelect }: GoalN
   );
 
   const classes = cn(
-    "flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer hover:bg-accent/50",
+    "flex items-center gap-2 px-3 py-1.5 text-sm transition-colors cursor-pointer hover:bg-[#FFF1B8]/50 font-semibold text-[#0d0c10]",
   );
 
   return (
@@ -100,18 +100,24 @@ export function GoalTree({ goals, goalLink, onSelect }: GoalTreeProps) {
   }
 
   return (
-    <div className="border border-border py-1">
-      {roots.map((goal) => (
-        <GoalNode
-          key={goal.id}
-          goal={goal}
-          children={goals.filter((g) => g.parentId === goal.id)}
-          allGoals={goals}
-          depth={0}
-          goalLink={goalLink}
-          onSelect={onSelect}
-        />
-      ))}
+    <div className="border-[2px] border-[#0d0c10] bg-[#fffaf0]" style={{ boxShadow: "4px 4px 0 0 #0d0c10" }}>
+      <div className="border-b-[2px] border-[#0d0c10] px-3 py-1.5 bg-[#1FA7FF] flex items-center gap-2">
+        <span className="w-3 h-3 rounded-full bg-[#0d0c10]" />
+        <span className="text-[12px] font-extrabold tracking-wide text-[#0d0c10]">GOALS TREE</span>
+      </div>
+      <div className="py-1">
+        {roots.map((goal) => (
+          <GoalNode
+            key={goal.id}
+            goal={goal}
+            children={goals.filter((g) => g.parentId === goal.id)}
+            allGoals={goals}
+            depth={0}
+            goalLink={goalLink}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
     </div>
   );
 }

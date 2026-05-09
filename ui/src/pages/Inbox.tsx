@@ -94,6 +94,7 @@ import {
   Search,
   ListTree,
 } from "lucide-react";
+import { StackButton, StackCard } from "@/components/stack";
 
 const INBOX_HEARTBEAT_RUN_LIMIT = 200;
 const INBOX_ISSUE_LIST_LIMIT = 500;
@@ -1981,16 +1982,14 @@ export function Inbox() {
               data-page-search-target="true"
             />
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className={cn("hidden h-8 w-8 shrink-0 sm:inline-flex", nestingEnabled && "bg-accent")}
+          <StackButton
+            color={nestingEnabled ? "#FFC83A" : undefined}
             onClick={toggleNesting}
+            className="hidden sm:inline-flex"
             title={nestingEnabled ? "Disable parent-child nesting" : "Enable parent-child nesting"}
           >
             <ListTree className="h-3.5 w-3.5" />
-          </Button>
+          </StackButton>
           <IssueFiltersPopover
             state={issueFilters}
             onChange={updateIssueFilters}
@@ -2007,15 +2006,13 @@ export function Inbox() {
           />
           <Popover>
             <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className={cn("h-8 w-8 shrink-0", groupBy !== "none" && "bg-accent")}
+              <StackButton
+                color={groupBy !== "none" ? "#FFC83A" : undefined}
+                className="shrink-0"
                 title="Group"
               >
                 <Layers className="h-3.5 w-3.5" />
-              </Button>
+              </StackButton>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-40 p-2">
               <div className="space-y-0.5">
@@ -2052,16 +2049,12 @@ export function Inbox() {
           />
           {canMarkAllRead && (
             <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 shrink-0"
+              <StackButton
                 onClick={() => setShowMarkAllReadConfirm(true)}
                 disabled={markAllReadMutation.isPending}
               >
                 {markAllReadMutation.isPending ? "Marking…" : "Mark all as read"}
-              </Button>
+              </StackButton>
               <Dialog open={showMarkAllReadConfirm} onOpenChange={setShowMarkAllReadConfirm}>
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader>
@@ -2156,8 +2149,9 @@ export function Inbox() {
         <>
           {showSeparatorBefore("work_items") && <Separator />}
           <div>
-            <div ref={listRef} className="overflow-hidden rounded-xl">
-              {(() => {
+            <StackCard accent="#FFC83A">
+              <div ref={listRef} className="overflow-hidden rounded-xl">
+                {(() => {
                 const renderInboxIssue = ({
                   issue,
                   depth,
@@ -2566,6 +2560,7 @@ export function Inbox() {
                 });
               })()}
             </div>
+          </StackCard>
           </div>
         </>
       )}
@@ -2577,9 +2572,9 @@ export function Inbox() {
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Alerts
             </h3>
-            <div className="divide-y divide-border border border-border">
+            <StackCard>
               {showAggregateAgentError && (
-                <div className="group/alert relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/50">
+                <div className="group/alert relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FFD1C4]/30">
                   <Link
                     to="/agents"
                     className="flex flex-1 cursor-pointer items-center gap-3 no-underline text-inherit"
@@ -2601,7 +2596,7 @@ export function Inbox() {
                 </div>
               )}
               {showBudgetAlert && (
-                <div className="group/alert relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/50">
+                <div className="group/alert relative flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#FFE6B5]/30">
                   <Link
                     to="/costs"
                     className="flex flex-1 cursor-pointer items-center gap-3 no-underline text-inherit"
@@ -2623,7 +2618,7 @@ export function Inbox() {
                   </button>
                 </div>
               )}
-            </div>
+            </StackCard>
           </div>
         </>
       )}

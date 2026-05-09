@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { ChiefDashboardPane } from "./chief-of-staff/ChiefDashboardPane";
 import { ChiefResponseCard } from "./chief-of-staff/ChiefResponseCard";
 import { HireCard } from "./hiring/HireCard";
@@ -31,6 +32,7 @@ import { HiringStageColumn } from "./hiring/HiringStageColumn";
 import { CandidateCard } from "./hiring/CandidateCard";
 import { PersonaCard } from "./hiring/PersonaCard";
 import { ScorecardView } from "./hiring/ScorecardView";
+import { listAgentAccents } from "@/lib/agent-color";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -131,9 +133,15 @@ import { InlineEditor } from "@/components/InlineEditor";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Identity } from "@/components/Identity";
 import { IssueReferencePill } from "@/components/IssueReferencePill";
-import { listAgentAccents } from "@/lib/agent-color";
-import { SidebarSection } from "@/components/SidebarSection";
-import { cn } from "@/lib/utils";
+import {
+  StackCard,
+  StackPanel,
+  StackKpi,
+  StackButton,
+  StackChip,
+  StackProgress,
+  StackStatusDot,
+} from "@/components/stack";
 
 /* ------------------------------------------------------------------ */
 /*  Section wrapper                                                    */
@@ -800,19 +808,6 @@ export function DesignGuide() {
             <MetricCard icon={Zap} value="99.9%" label="Uptime" />
           </div>
         </SubSection>
-
-        <SubSection title="Metric Card tones">
-          <p className="text-xs text-muted-foreground">
-            Tone tints the value, the icon, and a top accent strip. Use sparingly — at most one tone per card row.
-          </p>
-          <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-4">
-            <MetricCard tone="neutral" icon={Bot} value={12} label="Neutral" description="Default — no accent" />
-            <MetricCard tone="success" icon={Bot} value={9} label="Agents Enabled" description="Healthy" />
-            <MetricCard tone="info" icon={ListTodo} value={24} label="Tasks In Progress" description="Across the org" />
-            <MetricCard tone="spend" icon={DollarSign} value="$842" label="Month Spend" description="Within budget" />
-            <MetricCard tone="warning" icon={CircleDot} value={3} label="Pending Approvals" description="Awaiting operator" />
-          </div>
-        </SubSection>
       </Section>
 
       {/* ============================================================ */}
@@ -994,75 +989,6 @@ export function DesignGuide() {
       </Section>
 
       {/* ============================================================ */}
-      {/*  AGENT PALETTE                                                */}
-      {/* ============================================================ */}
-      <Section title="Agent Palette">
-        <p className="text-sm text-muted-foreground">
-          Every agent gets a deterministic accent color from{" "}
-          <code className="font-mono text-xs">getAgentAccent(agentId)</code> — used in
-          avatar bubbles, sidebar dots, dashboard card strips, and activity rows.
-          Hash is stable across sessions and machines, so the same agent renders the
-          same color everywhere. Red and green are excluded so accents don't collide
-          with status semantics.
-        </p>
-
-        <SubSection title="Seeded role identities">
-          <p className="text-xs text-muted-foreground">
-            The 10 default human-named identities from{" "}
-            <code className="font-mono text-[10px]">role-templates.ts</code>, each
-            rendered with their accent. Name + title is required everywhere — color
-            is in addition to the label, never instead of it.
-          </p>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
-            {[
-              { id: "exec.ceo", name: "Aria Whitfield", title: "CEO" },
-              { id: "exec.cto", name: "Marcus Chen", title: "CTO" },
-              { id: "exec.cmo", name: "Naomi Okafor", title: "CMO" },
-              { id: "exec.cfo", name: "Theo Rashid", title: "CFO" },
-              { id: "hr.head", name: "Lena Park", title: "Head of HR" },
-              { id: "eng.lead", name: "Sofia Reyes", title: "Engineering Lead" },
-              { id: "eng.reviewer", name: "Owen Mackenzie", title: "Senior Reviewer" },
-              { id: "qa.lead", name: "Priya Iyer", title: "QA Lead" },
-              { id: "prod.pm", name: "Maya Lindqvist", title: "Product Manager" },
-              { id: "prod.designer", name: "Felix Romano", title: "Product Designer" },
-            ].map((p) => (
-              <Identity
-                key={p.id}
-                agentId={p.id}
-                name={`${p.name} · ${p.title}`}
-                size="sm"
-              />
-            ))}
-          </div>
-        </SubSection>
-
-        <SubSection title="Palette swatches">
-          <p className="text-xs text-muted-foreground">
-            All 10 palette entries — exposed via{" "}
-            <code className="font-mono text-[10px]">listAgentAccents()</code>. Each
-            entry provides <code className="font-mono text-[10px]">bg / text / ring / soft / border / hex</code>{" "}
-            classes for use in different surfaces.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {listAgentAccents().map((a, i) => (
-              <div key={a.hex} className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-semibold",
-                    a.bg,
-                    a.text,
-                  )}
-                >
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <span className="text-[11px] font-mono text-muted-foreground">{a.hex}</span>
-              </div>
-            ))}
-          </div>
-        </SubSection>
-      </Section>
-
-      {/* ============================================================ */}
       {/*  TOOLTIPS                                                     */}
       {/* ============================================================ */}
       <Section title="Tooltips">
@@ -1229,46 +1155,6 @@ export function DesignGuide() {
               <Hexagon className="h-4 w-4" />
               Projects
             </div>
-          </div>
-        </SubSection>
-
-        <SubSection title="Sidebar tones">
-          <p className="text-xs text-muted-foreground">
-            Section labels and the active-state left rail are tinted by tone — Work
-            is sky, Company is violet, Operator is amber. The tinted label turns
-            the sidebar from a flat list into a navigable map without sacrificing
-            information density. Active-row rail color matches the section's tone.
-          </p>
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              { tone: "work" as const, label: "Work", icon: ListTodo, item: "My Issues" },
-              { tone: "company" as const, label: "Company", icon: Bot, item: "Agents" },
-              { tone: "operator" as const, label: "Operator", icon: Settings, item: "Settings" },
-            ].map(({ tone, label, icon: Icon, item }) => (
-              <div key={tone} className="w-full border border-border rounded-md p-2 bg-card">
-                <SidebarSection label={label} tone={tone}>
-                  {/* Simulated active nav row — mirrors SidebarNavItem's active-state visuals
-                      without depending on router state. */}
-                  <div
-                    className={cn(
-                      "relative flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium",
-                      "before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r",
-                      "bg-accent text-foreground",
-                      tone === "work" && "before:bg-[var(--tone-work-rail)]",
-                      tone === "company" && "before:bg-[var(--tone-company-rail)]",
-                      tone === "operator" && "before:bg-[var(--tone-operator-rail)]",
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="flex-1 truncate">{item}</span>
-                  </div>
-                  <div className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent/50">
-                    <Icon className="h-4 w-4 shrink-0 opacity-60" />
-                    <span className="flex-1 truncate text-muted-foreground">Other item</span>
-                  </div>
-                </SidebarSection>
-              </div>
-            ))}
           </div>
         </SubSection>
 
@@ -1452,6 +1338,180 @@ export function DesignGuide() {
       </Section>
 
       {/* ============================================================ */}
+      {/*  STACK SYSTEM                                                 */}
+      {/* ============================================================ */}
+      <Section title="Stack System">
+        <p className="text-sm text-muted-foreground">
+          Brutalist 2px borders, hard shadows, pastel accents, mono labels. Import from{" "}
+          <code className="text-xs font-mono">@/components/stack</code>.
+        </p>
+
+        <SubSection title="StackCard">
+          <div className="grid gap-4 md:grid-cols-2">
+            <StackCard>Default card</StackCard>
+            <StackCard accent="#27D17F">With accent bar</StackCard>
+          </div>
+        </SubSection>
+
+        <SubSection title="StackPanel">
+          <StackPanel
+            title="Panel Title"
+            color="#1FA7FF"
+            right={<span className="font-mono text-[10px] font-bold">right</span>}
+          >
+            <div className="p-4">Panel content goes here.</div>
+          </StackPanel>
+        </SubSection>
+
+        <SubSection title="StackKpi">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <StackKpi label="Spend" big="$1,240" sub="this month" color="#FF8A1A" />
+            <StackKpi label="Agents" big="12" sub="active" color="#27D17F" />
+            <StackKpi label="Issues" big="84" sub="open" color="#1FA7FF" />
+            <StackKpi label="Budget" big="72%" sub="utilized" color="#FFC83A" />
+          </div>
+        </SubSection>
+
+        <SubSection title="StackButton">
+          <div className="flex flex-wrap gap-2">
+            <StackButton>Neutral</StackButton>
+            <StackButton color="#FF8A1A">Costs</StackButton>
+            <StackButton color="#27D17F">Agents</StackButton>
+            <StackButton color="#1FA7FF">Goals</StackButton>
+            <StackButton color="#FF6B9A">Chief</StackButton>
+          </div>
+        </SubSection>
+
+        <SubSection title="StackChip">
+          <div className="flex flex-wrap gap-2">
+            <StackChip color="#FFE6B5">Pending</StackChip>
+            <StackChip color="#C2EED8">Active</StackChip>
+            <StackChip color="#C8E5FF">Delivered</StackChip>
+            <StackChip color="#DDD2FF">In progress</StackChip>
+            <StackChip color="#FFD1C4">Failed</StackChip>
+          </div>
+        </SubSection>
+
+        <SubSection title="StackProgress">
+          <div className="space-y-3 max-w-sm">
+            <StackProgress value={25} color="#27D17F" />
+            <StackProgress value={60} color="#FFC83A" />
+            <StackProgress value={90} color="#FF4D2E" />
+          </div>
+        </SubSection>
+
+        <SubSection title="StackStatusDot">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <StackStatusDot color="#4ade80" /> Active
+            </div>
+            <div className="flex items-center gap-1.5">
+              <StackStatusDot color="#facc15" /> Idle
+            </div>
+            <div className="flex items-center gap-1.5">
+              <StackStatusDot color="#f87171" /> Error
+            </div>
+          </div>
+        </SubSection>
+
+        <SubSection title="Accent swatches">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              ["Costs", "#FF8A1A"],
+              ["Agents / Routines", "#27D17F"],
+              ["Issues", "#FFC83A"],
+              ["Goals", "#1FA7FF"],
+              ["Org", "#7C5CFF"],
+              ["Hiring", "#5B8DEF"],
+              ["Meetings", "#B872FF"],
+              ["Briefs", "#FFB400"],
+              ["Departments", "#FF3FA4"],
+              ["Trust Layer", "#22C2A4"],
+              ["Activity", "#A4D81F"],
+              ["Chief of Staff", "#FF6B9A"],
+            ].map(([name, color]) => (
+              <div key={name} className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-sm border border-border" style={{ backgroundColor: color }} />
+                <div>
+                  <p className="text-xs font-medium">{name}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground">{color}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SubSection>
+      </Section>
+
+      {/* ============================================================ */}
+      {/*  AGENT PALETTE                                                */}
+      {/* ============================================================ */}
+      <Section title="Agent Palette">
+        <p className="text-sm text-muted-foreground">
+          Every agent gets a deterministic accent color from{" "}
+          <code className="font-mono text-xs">getAgentAccent(agentId)</code> — used in
+          avatar bubbles, sidebar dots, dashboard card strips, and activity rows.
+          Hash is stable across sessions and machines, so the same agent renders the
+          same color everywhere. Red and green are excluded so accents don't collide
+          with status semantics.
+        </p>
+
+        <SubSection title="Seeded role identities">
+          <p className="text-xs text-muted-foreground">
+            The 10 default human-named identities from{" "}
+            <code className="font-mono text-[10px]">role-templates.ts</code>, each
+            rendered with their accent. Name + title is required everywhere — color
+            is in addition to the label, never instead of it.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+            {[
+              { id: "exec.ceo", name: "Aria Whitfield", title: "CEO" },
+              { id: "exec.cto", name: "Marcus Chen", title: "CTO" },
+              { id: "exec.cmo", name: "Naomi Okafor", title: "CMO" },
+              { id: "exec.cfo", name: "Theo Rashid", title: "CFO" },
+              { id: "hr.head", name: "Lena Park", title: "Head of HR" },
+              { id: "eng.lead", name: "Sofia Reyes", title: "Engineering Lead" },
+              { id: "eng.reviewer", name: "Owen Mackenzie", title: "Senior Reviewer" },
+              { id: "qa.lead", name: "Priya Iyer", title: "QA Lead" },
+              { id: "prod.pm", name: "Maya Lindqvist", title: "Product Manager" },
+              { id: "prod.designer", name: "Felix Romano", title: "Product Designer" },
+            ].map((p) => (
+              <Identity
+                key={p.id}
+                agentId={p.id}
+                name={`${p.name} · ${p.title}`}
+                size="sm"
+              />
+            ))}
+          </div>
+        </SubSection>
+
+        <SubSection title="Palette swatches">
+          <p className="text-xs text-muted-foreground">
+            All 10 palette entries — exposed via{" "}
+            <code className="font-mono text-[10px]">listAgentAccents()</code>. Each
+            entry provides <code className="font-mono text-[10px]">bg / text / ring / soft / border / hex</code>{" "}
+            classes for use in different surfaces.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {listAgentAccents().map((a, i) => (
+              <div key={a.hex} className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-semibold",
+                    a.bg,
+                    a.text,
+                  )}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground">{a.hex}</span>
+              </div>
+            ))}
+          </div>
+        </SubSection>
+      </Section>
+
+      {/* ============================================================ */}
       {/*  CHIEF OF STAFF                                               */}
       {/* ============================================================ */}
       <Section title="Chief of Staff">
@@ -1521,78 +1581,6 @@ export function DesignGuide() {
                     { id: "issue-1", identifier: "RAI-12", title: "Roll out adapter telemetry", status: "blocked", priority: "critical" },
                     { id: "issue-2", identifier: "RAI-15", title: "Migrate cost-event indexes", status: "blocked", priority: "high" },
                     { id: "issue-3", identifier: "RAI-19", title: "Sandbox bypass review", status: "blocked", priority: "medium" },
-                  ],
-                },
-              ],
-            }}
-          />
-        </SubSection>
-
-        <SubSection title="ChiefResponseCard — meetings intent">
-          <ChiefResponseCard
-            response={{
-              intent: "what_is_happening",
-              summary: "1 live meeting, 1 awaiting your decision.",
-              sections: [
-                {
-                  heading: "Live meetings",
-                  kind: "meetings",
-                  rows: [
-                    { id: "meet-1", title: "Q3 Engineering Review", state: "active" },
-                    { id: "meet-2", title: "Hiring Panel — Eng Lead", state: "waiting_for_operator" },
-                  ],
-                },
-              ],
-            }}
-          />
-        </SubSection>
-
-        <SubSection title="ChiefResponseCard — costs intent">
-          <ChiefResponseCard
-            response={{
-              intent: "what_is_wasting_money",
-              summary: "$18.42 over 7 days — 84% on Azure OpenAI metered API.",
-              sections: [
-                {
-                  heading: "Spend by provider · billing type (7d)",
-                  kind: "costs",
-                  rows: [
-                    { provider: "azure_openai", billingType: "metered_api", cents: 1547 },
-                    { provider: "openrouter", billingType: "metered_api", cents: 218 },
-                    { provider: "anthropic", billingType: "subscription", cents: 77 },
-                  ],
-                },
-              ],
-            }}
-          />
-        </SubSection>
-
-        <SubSection title="ChiefResponseCard — approvals + hires + inbox">
-          <ChiefResponseCard
-            response={{
-              intent: "what_needs_approval",
-              summary: "2 approval requests on the bus, 1 hire ready to mint.",
-              sections: [
-                {
-                  heading: "Approval requests on the bus",
-                  kind: "approvals",
-                  rows: [
-                    { id: "bus-1", kind: "operator_approval_request", payload: { summary: "Sofia Reyes wants to deploy o4-mini config changes" } },
-                    { id: "bus-2", kind: "operator_approval_request", payload: { summary: "Phoebe Walker requests sandbox bypass for migration" } },
-                  ],
-                },
-                {
-                  heading: "Hires ready to mint",
-                  kind: "hires",
-                  rows: [
-                    { id: "hire-1", title: "Senior Designer · Aria K.", status: "recommended" },
-                  ],
-                },
-                {
-                  heading: "Inbox awaiting triage",
-                  kind: "inbox",
-                  rows: [
-                    { id: "inbox-1", kind: "note", bodyMarkdown: "Operator wants weekly cost summary in dashboard" },
                   ],
                 },
               ],
@@ -1692,37 +1680,6 @@ export function DesignGuide() {
                 }}
                 scorecards={[]}
               />
-              <CandidateCard
-                candidate={{
-                  id: "cand-2",
-                  hireId: "h1",
-                  humanFirstName: "Naomi",
-                  humanLastName: "Okafor",
-                  title: "Backend Engineer",
-                  status: "proposed",
-                  summary: "Recovery + observability specialist. Quiet but lethal.",
-                  resumeMarkdown: null,
-                  sourceTemplateKey: null,
-                  proposedAdapterType: "azure_openai",
-                  createdAt: new Date().toISOString(),
-                }}
-                scorecards={[
-                  {
-                    id: "sc-1",
-                    candidateId: "cand-2",
-                    pass: "interview",
-                    rubric: [
-                      { criterion: "Communication", weight: 0.25, score: 4 },
-                      { criterion: "Domain expertise", weight: 0.30, score: 4.5 },
-                      { criterion: "Independent judgement", weight: 0.25, score: 4 },
-                      { criterion: "Cultural fit", weight: 0.20, score: 4 },
-                    ],
-                    recommendation: "hire",
-                    notes: null,
-                    createdAt: new Date().toISOString(),
-                  },
-                ]}
-              />
             </div>
           </div>
         </SubSection>
@@ -1744,7 +1701,7 @@ export function DesignGuide() {
               summary:
                 "10 years Postgres, ex-Stripe payments infra. Opinionated about migrations and gradual rollouts. Doesn't pad answers.",
               resumeMarkdown:
-                "**Past roles**\n- Stripe — Payments infra (4y)\n- Datadog — Observability backend (3y)\n\n**Strengths**\n- Migration patterns under load\n- Postgres internals\n\n**Edge**\n- Will push back on YAML configs.",
+                "**Past roles**\n- Stripe — Payments infra (4y)\n- Datadog — Observability backend (3y)\n\n**Strengths**\n- Migration patterns under load",
               sourceTemplateKey: "eng.lead",
               proposedAdapterType: "azure_openai",
               createdAt: new Date().toISOString(),
@@ -1771,7 +1728,7 @@ export function DesignGuide() {
               ],
               recommendation: "hire",
               notes:
-                "Strong technical signal. Communication is direct without being curt. One concern: hesitated on first pushback before getting into it — but recovered well. Recommend advancing to trial.",
+                "Strong technical signal. Recommend advancing to trial.",
               createdAt: new Date().toISOString(),
             }}
           />

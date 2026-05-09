@@ -21,6 +21,7 @@ import { Bot, Plus, List, GitBranch, SlidersHorizontal } from "lucide-react";
 import { AGENT_ROLE_LABELS, type Agent } from "@nessie/shared";
 
 import { getAdapterLabel } from "../adapters/adapter-display-registry";
+import { StackButton, StackCard, StackPanel } from "@/components/stack";
 
 const roleLabels = AGENT_ROLE_LABELS as Record<string, string>;
 
@@ -178,36 +179,32 @@ export function Agents() {
           </div>
           {/* View toggle */}
           {!forceListView && (
-            <div className="flex items-center border border-border">
-              <button
-                className={cn(
-                  "p-1.5 transition-colors",
-                  effectiveView === "list" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50"
-                )}
+            <div className="flex items-center">
+              <StackButton
+                color={effectiveView === "list" ? "#27D17F" : undefined}
                 onClick={() => setView("list")}
+                className="rounded-none"
               >
                 <List className="h-3.5 w-3.5" />
-              </button>
-              <button
-                className={cn(
-                  "p-1.5 transition-colors",
-                  effectiveView === "org" ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/50"
-                )}
+              </StackButton>
+              <StackButton
+                color={effectiveView === "org" ? "#27D17F" : undefined}
                 onClick={() => setView("org")}
+                className="rounded-none"
               >
                 <GitBranch className="h-3.5 w-3.5" />
-              </button>
+              </StackButton>
             </div>
           )}
-          <Button size="sm" variant="outline" onClick={openNewAgent}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
+          <StackButton color="#27D17F" onClick={openNewAgent}>
+            <Plus className="h-3.5 w-3.5" />
             New Agent
-          </Button>
+          </StackButton>
         </div>
       </div>
 
       {filtered.length > 0 && (
-        <p className="text-xs text-muted-foreground">{filtered.length} agent{filtered.length !== 1 ? "s" : ""}</p>
+        <p className="text-xs font-mono font-bold text-[#5a525e] uppercase tracking-wide">{filtered.length} agent{filtered.length !== 1 ? "s" : ""}</p>
       )}
 
       {error && <p className="text-sm text-destructive">{error.message}</p>}
@@ -223,7 +220,7 @@ export function Agents() {
 
       {/* List view */}
       {effectiveView === "list" && filtered.length > 0 && (
-        <div className="border border-border">
+        <StackCard accent="#27D17F">
           {filtered.map((agent) => {
             return (
               <EntityRow
@@ -281,7 +278,7 @@ export function Agents() {
               />
             );
           })}
-        </div>
+        </StackCard>
       )}
 
       {effectiveView === "list" && agents && agents.length > 0 && filtered.length === 0 && (
@@ -292,11 +289,21 @@ export function Agents() {
 
       {/* Org chart view */}
       {effectiveView === "org" && filteredOrg.length > 0 && (
-        <div className="border border-border py-1">
-          {filteredOrg.map((node) => (
-            <OrgTreeNode key={node.id} node={node} depth={0} agentMap={agentMap} liveRunByAgent={liveRunByAgent} tab={tab} />
-          ))}
-        </div>
+        <StackPanel
+          title={
+            <span className="flex items-center gap-2">
+              <span>AGENTS</span>
+              <span className="font-mono text-[10px] font-bold">{filteredOrg.length} root</span>
+            </span>
+          }
+          color="#27D17F"
+        >
+          <div className="py-1">
+            {filteredOrg.map((node) => (
+              <OrgTreeNode key={node.id} node={node} depth={0} agentMap={agentMap} liveRunByAgent={liveRunByAgent} tab={tab} />
+            ))}
+          </div>
+        </StackPanel>
       )}
 
       {effectiveView === "org" && orgTree && orgTree.length > 0 && filteredOrg.length === 0 && (

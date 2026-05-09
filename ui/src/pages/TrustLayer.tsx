@@ -21,6 +21,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { Button } from "@/components/ui/button";
 import type { Agent } from "@nessie/shared";
+import { StackButton, StackCard, StackChip, StackKpi } from "@/components/stack";
 
 const NO_COMPANY = "__none__";
 
@@ -33,25 +34,25 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: "reputation", label: "Reputation" },
 ];
 
-function busStatusTone(s: BusStatus) {
+function busStatusColor(s: BusStatus) {
   switch (s) {
-    case "pending": return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
-    case "delivered": return "bg-sky-500/15 text-sky-700 dark:text-sky-400";
-    case "replied": return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
-    case "expired": return "bg-muted text-muted-foreground";
-    case "dismissed": return "bg-muted text-muted-foreground";
+    case "pending": return "#FFE6B5";
+    case "delivered": return "#C8E5FF";
+    case "replied": return "#C2EED8";
+    case "expired": return "#FFF8E8";
+    case "dismissed": return "#FFF8E8";
   }
 }
 
-function contractStateTone(s: ContractState) {
+function contractStateColor(s: ContractState) {
   switch (s) {
-    case "draft": return "bg-muted text-muted-foreground";
-    case "accepted": return "bg-sky-500/15 text-sky-700 dark:text-sky-400";
-    case "in_progress": return "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400";
-    case "submitted": return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
-    case "approved": return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
-    case "rejected": return "bg-destructive/15 text-destructive";
-    case "abandoned": return "bg-muted text-muted-foreground";
+    case "draft": return "#FFF8E8";
+    case "accepted": return "#C8E5FF";
+    case "in_progress": return "#DDD2FF";
+    case "submitted": return "#FFE6B5";
+    case "approved": return "#C2EED8";
+    case "rejected": return "#FFD1C4";
+    case "abandoned": return "#FFF8E8";
   }
 }
 
@@ -118,14 +119,10 @@ function BusPanel({ companyId, agents }: { companyId: string; agents: Agent[] })
       {data && data.messages.length > 0 && (
         <ul className="space-y-1">
           {data.messages.map((m: BusMessage) => (
-            <li key={m.id} className="border border-border bg-card px-3 py-2 text-xs">
+            <li key={m.id} className="stack-card px-3 py-2 text-xs">
               <div className="flex items-center gap-2">
-                <span className="px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider bg-muted text-muted-foreground">
-                  {m.kind}
-                </span>
-                <span className={`px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider ${busStatusTone(m.status)}`}>
-                  {m.status}
-                </span>
+                <StackChip color="#FFF8E8">{m.kind}</StackChip>
+                <StackChip color={busStatusColor(m.status)} textColor="#0d0c10">{m.status}</StackChip>
                 <span className="flex-1 text-muted-foreground">
                   {m.fromAgentId ? (agentMap.get(m.fromAgentId) ?? m.fromAgentId.slice(0, 8)) : "—"}
                   <span className="mx-1">→</span>
@@ -135,14 +132,12 @@ function BusPanel({ companyId, agents }: { companyId: string; agents: Agent[] })
                   {new Date(m.createdAt).toLocaleString()}
                 </span>
                 {m.status !== "dismissed" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
+                  <StackButton
                     onClick={() => statusMutation.mutate({ id: m.id, to: "dismissed" })}
                     disabled={statusMutation.isPending}
                   >
                     Dismiss
-                  </Button>
+                  </StackButton>
                 )}
               </div>
               <pre className="mt-1.5 whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
@@ -189,7 +184,7 @@ function ContractsPanel({ agents }: { agents: Agent[] }) {
           onChange={(e) => setIssueId(e.target.value)}
           className="flex-1 border border-border bg-background px-2 py-1.5 text-sm font-mono"
         />
-        <Button type="submit" size="sm" disabled={!issueId.trim()}>Load contract</Button>
+        <StackButton type="submit" color="#22C2A4" disabled={!issueId.trim()}>Load contract</StackButton>
       </form>
 
       {!loaded && (
@@ -231,11 +226,11 @@ function ContractView({
     abandoned: [],
   };
   return (
-    <div className="border border-border bg-card p-4 space-y-3 text-xs">
+    <div className="stack-card p-4 space-y-3 text-xs">
       <div className="flex items-center gap-2">
-        <span className={`px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider ${contractStateTone(contract.state)}`}>
+        <StackChip color={contractStateColor(contract.state)} textColor="#0d0c10">
           {contract.state}
-        </span>
+        </StackChip>
         <span className="text-muted-foreground">
           owner: {contract.ownerAgentId ? (agentMap.get(contract.ownerAgentId) ?? contract.ownerAgentId.slice(0, 8)) : "—"}
         </span>
@@ -288,18 +283,17 @@ function ContractView({
       )}
 
       {NEXT[contract.state].length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+        <div className="flex flex-wrap items-center gap-1.5 border-t-[1.5px] border-[#0d0c10] pt-3">
           <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Transition →</span>
           {NEXT[contract.state].map((to) => (
-            <Button
+            <StackButton
               key={to}
-              size="sm"
-              variant={to === "abandoned" || to === "rejected" ? "ghost" : "outline"}
+              color={to === "abandoned" || to === "rejected" ? undefined : "#22C2A4"}
               onClick={() => onTransition(to)}
               disabled={isPending}
             >
               {to.replaceAll("_", " ")}
-            </Button>
+            </StackButton>
           ))}
         </div>
       )}
@@ -344,7 +338,7 @@ function BlackBoxPanel() {
           onChange={(e) => setScopeId(e.target.value)}
           className="flex-1 border border-border bg-background px-2 py-1.5 text-sm font-mono"
         />
-        <Button type="submit" size="sm" disabled={!scopeId.trim()}>Load records</Button>
+        <StackButton type="submit" color="#22C2A4" disabled={!scopeId.trim()}>Load records</StackButton>
       </form>
 
       {!loaded && (
@@ -365,7 +359,7 @@ function BlackBoxPanel() {
       {data && data.records.length > 0 && (
         <ul className="space-y-1">
           {data.records.map((r: BlackBoxRecord) => (
-            <li key={r.id} className="border border-border bg-card px-3 py-2 text-xs">
+            <li key={r.id} className="stack-card px-3 py-2 text-xs">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
                   {r.label ?? "(no label)"}
@@ -429,16 +423,9 @@ function ReputationPanel({ agents }: { agents: Agent[] }) {
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {REPUTATION_DIMENSIONS.map((d) => {
               const v = totals[d] ?? 0;
-              const tone = v > 0 ? "text-emerald-600 dark:text-emerald-400"
-                : v < 0 ? "text-destructive"
-                : "text-muted-foreground";
+              const color = v > 0 ? "#27D17F" : v < 0 ? "#FF4D2E" : "#0d0c10";
               return (
-                <div key={d} className="border border-border p-2 text-center">
-                  <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{d}</div>
-                  <div className={`mt-1 text-lg font-semibold tabular-nums ${tone}`}>
-                    {v > 0 ? "+" : ""}{v}
-                  </div>
-                </div>
+                <StackKpi key={d} label={d} big={`${v > 0 ? "+" : ""}${v}`} color={color} />
               );
             })}
           </div>
@@ -448,16 +435,12 @@ function ReputationPanel({ agents }: { agents: Agent[] }) {
           ) : (
             <ul className="space-y-1">
               {data.events.map((ev: ReputationEvent) => (
-                <li key={ev.id} className="border border-border bg-card px-3 py-2 text-xs">
+                <li key={ev.id} className="stack-card px-3 py-2 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className="px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider bg-muted">
-                      {ev.dimension}
-                    </span>
-                    <span className={`font-mono text-sm tabular-nums ${
-                      ev.delta > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
-                    }`}>
+                    <StackChip color="#FFF8E8">{ev.dimension}</StackChip>
+                    <StackChip color={ev.delta > 0 ? "#C2EED8" : "#FFD1C4"} textColor="#0d0c10">
                       {ev.delta > 0 ? "+" : ""}{ev.delta}
-                    </span>
+                    </StackChip>
                     <span className="flex-1 text-muted-foreground">{ev.reason}</span>
                     <span className="text-[10px] tabular-nums text-muted-foreground">
                       {new Date(ev.createdAt).toLocaleDateString()}
@@ -502,18 +485,13 @@ export function TrustLayer() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-1 border-b border-border">
         {TABS.map((t) => (
-          <button
+          <StackButton
             key={t.id}
-            type="button"
+            color={tab === t.id ? "#22C2A4" : undefined}
             onClick={() => setTab(t.id)}
-            className={`-mb-px border-b-2 px-3 py-1.5 text-sm ${
-              tab === t.id
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
           >
             {t.label}
-          </button>
+          </StackButton>
         ))}
       </div>
 

@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import type { RoutineListItem, RoutineVariable } from "@nessie/shared";
+import { StackButton, StackCard } from "@/components/stack";
 
 const concurrencyPolicies = ["coalesce_if_active", "always_enqueue", "skip_if_active"];
 const catchUpPolicies = ["skip_missed", "enqueue_missed_with_cap"];
@@ -497,10 +498,10 @@ export function Routines() {
             Recurring work definitions that materialize into auditable execution issues.
           </p>
         </div>
-        <Button onClick={() => setComposerOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
+        <StackButton color="#27D17F" onClick={() => setComposerOpen(true)}>
+          <Plus className="h-4 w-4" />
           Create routine
-        </Button>
+        </StackButton>
       </div>
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -843,16 +844,17 @@ export function Routines() {
               After creation, Paperclip takes you straight to trigger setup. Draft routines stay paused until you add a default agent.
             </div>
             <div className="flex flex-col gap-2 sm:items-end">
-              <Button
+              <StackButton
+                color="#27D17F"
                 onClick={() => createRoutine.mutate()}
                 disabled={
                   createRoutine.isPending ||
                   !draft.title.trim()
                 }
               >
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 {createRoutine.isPending ? "Creating..." : "Create routine"}
-              </Button>
+              </StackButton>
               {createRoutine.isError ? (
                 <p className="text-sm text-destructive">
                   {createRoutine.error instanceof Error ? createRoutine.error.message : "Failed to create routine"}
@@ -864,11 +866,9 @@ export function Routines() {
       </Dialog>
 
       {error ? (
-        <Card>
-          <CardContent className="pt-6 text-sm text-destructive">
-            {error instanceof Error ? error.message : "Failed to load routines"}
-          </CardContent>
-        </Card>
+        <StackCard className="p-4 text-sm text-destructive">
+          {error instanceof Error ? error.message : "Failed to load routines"}
+        </StackCard>
       ) : null}
 
       {activeTab === "routines" ? (
@@ -881,7 +881,7 @@ export function Routines() {
               />
             </div>
           ) : (
-            <div className="rounded-lg border border-border">
+            <div className="stack-card overflow-hidden">
               {routineGroups.map((group) => (
                 <Collapsible
                   key={group.key}

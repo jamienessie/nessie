@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { History } from "lucide-react";
+import { StackCard } from "@/components/stack";
 
 const ACTIVITY_PAGE_LIMIT = 200;
 
@@ -142,7 +143,7 @@ export function Activity() {
       )}
 
       {filtered && filtered.length > 0 && (
-        <div className="border border-border divide-y divide-border">
+        <StackCard accent="#A4D81F">
           {filtered.map((event) => (
             <ActivityRow
               key={event.id}
@@ -153,7 +154,7 @@ export function Activity() {
               entityTitleMap={entityTitleMap}
             />
           ))}
-        </div>
+        </StackCard>
       )}
     </div>
   );

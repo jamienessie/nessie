@@ -1,82 +1,70 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "@/lib/router";
-import { cn } from "@/lib/utils";
 
 export type MetricCardTone = "neutral" | "success" | "warning" | "info" | "spend";
 
 interface MetricCardProps {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   value: string | number;
   label: string;
   description?: ReactNode;
   to?: string;
   onClick?: () => void;
+  /** Raw background colour. If `tone` is also set, `tone` wins. */
+  color?: string;
+  /** Semantic tone — maps to a warm-palette background. Default is neutral cream. */
   tone?: MetricCardTone;
 }
 
-const toneValueClass: Record<MetricCardTone, string> = {
-  neutral: "",
-  success: "text-emerald-700 dark:text-emerald-300",
-  warning: "text-amber-700 dark:text-amber-300",
-  info: "text-sky-700 dark:text-sky-300",
-  spend: "text-cyan-700 dark:text-cyan-300",
+const TONE_COLOR: Record<MetricCardTone, string> = {
+  neutral: "#FFF8E8",
+  success: "#D4F2DC",
+  warning: "#FFF1B8",
+  info: "#D6E9F5",
+  spend: "#FFE4D0",
 };
 
-const toneIconClass: Record<MetricCardTone, string> = {
-  neutral: "text-muted-foreground/50",
-  success: "text-emerald-500 dark:text-emerald-400",
-  warning: "text-amber-500 dark:text-amber-400",
-  info: "text-sky-500 dark:text-sky-400",
-  spend: "text-cyan-500 dark:text-cyan-400",
-};
-
-const toneStripClass: Record<MetricCardTone, string> = {
-  neutral: "",
-  success: "before:bg-gradient-to-r before:from-emerald-500/40 before:to-transparent",
-  warning: "before:bg-gradient-to-r before:from-amber-500/40 before:to-transparent",
-  info: "before:bg-gradient-to-r before:from-sky-500/40 before:to-transparent",
-  spend: "before:bg-gradient-to-r before:from-cyan-500/40 before:to-transparent",
-};
-
-export function MetricCard({ icon: Icon, value, label, description, to, onClick, tone = "neutral" }: MetricCardProps) {
+export function MetricCard({
+  icon: Icon,
+  value,
+  label,
+  description,
+  to,
+  onClick,
+  color,
+  tone = "neutral",
+}: MetricCardProps) {
   const isClickable = !!(to || onClick);
+  const bg = color ?? TONE_COLOR[tone];
 
   const inner = (
     <div
-      className={cn(
-        "relative h-full px-4 py-4 sm:px-5 sm:py-5 rounded-lg transition-colors",
-        // Top accent strip for non-neutral tones
-        tone !== "neutral" && cn(
-          "before:absolute before:top-0 before:left-0 before:right-0 before:h-0.5 before:rounded-t-lg",
-          toneStripClass[tone],
-        ),
-        isClickable && "hover:bg-accent/50 cursor-pointer",
-      )}
+      className={`h-full p-3 flex flex-col gap-1 transition-all${isClickable ? " hover:-translate-x-[1px] hover:-translate-y-[1px] hover:shadow-[5px_5px_0_0_#0d0c10] cursor-pointer" : ""}`}
+      style={{
+        background: bg,
+        border: "2px solid #0d0c10",
+        boxShadow: "4px 4px 0 0 #0d0c10",
+      }}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className={cn(
-            "text-2xl sm:text-3xl font-semibold tracking-tight tabular-nums",
-            toneValueClass[tone],
-          )}>
-            {value}
-          </p>
-          <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
-            {label}
-          </p>
-          {description && (
-            <div className="text-xs text-muted-foreground/70 mt-1.5 hidden sm:block">{description}</div>
-          )}
+      <div className="flex items-start justify-between gap-2">
+        <div className="font-mono text-[10px] font-bold tracking-[1.4px] uppercase text-[#0d0c10]">
+          {label}
         </div>
-        <Icon className={cn("h-4 w-4 shrink-0 mt-1.5", toneIconClass[tone])} />
+        {Icon && <Icon className="size-3 shrink-0 text-[#0d0c10]" aria-hidden />}
       </div>
+      <div className="text-[26px] font-extrabold leading-none tracking-tight text-[#0d0c10]">
+        {value}
+      </div>
+      {description && (
+        <div className="text-[11px] font-semibold text-[#3a3340] mt-0.5">{description}</div>
+      )}
     </div>
   );
 
   if (to) {
     return (
-      <Link to={to} className="no-underline text-inherit h-full" onClick={onClick}>
+      <Link to={to} className="no-underline text-inherit h-full block" onClick={onClick}>
         {inner}
       </Link>
     );

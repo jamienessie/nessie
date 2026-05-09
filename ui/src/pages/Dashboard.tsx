@@ -198,16 +198,16 @@ export function Dashboard() {
       {error && <p className="text-sm text-destructive">{error.message}</p>}
 
       {hasNoAgents && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-500/25 dark:bg-amber-950/60">
+        <div className="flex items-center justify-between gap-3 stack-card px-4 py-3" style={{ background: "#FFF1B8" }}>
           <div className="flex items-center gap-2.5">
-            <Bot className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-            <p className="text-sm text-amber-900 dark:text-amber-100">
+            <Bot className="h-4 w-4 text-[#FF8A1A] shrink-0" />
+            <p className="text-sm font-semibold text-[#0d0c10]">
               You have no agents.
             </p>
           </div>
           <button
             onClick={() => openOnboarding({ initialStep: 2, companyId: selectedCompanyId! })}
-            className="text-sm font-medium text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100 underline underline-offset-2 shrink-0"
+            className="text-sm font-bold text-[#0d0c10] underline underline-offset-2 shrink-0"
           >
             Create one here
           </button>
@@ -219,58 +219,55 @@ export function Dashboard() {
       {data && (
         <>
           {data.budgets.activeIncidents > 0 ? (
-            <div className="flex items-start justify-between gap-3 rounded-xl border border-red-500/20 bg-[linear-gradient(180deg,rgba(255,80,80,0.12),rgba(255,255,255,0.02))] px-4 py-3">
+            <div className="flex items-start justify-between gap-3 stack-card px-4 py-3" style={{ background: "#FFD1C4" }}>
               <div className="flex items-start gap-2.5">
-                <PauseCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-300" />
+                <PauseCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#FF4D2E]" />
                 <div>
-                  <p className="text-sm font-medium text-red-50">
+                  <p className="text-sm font-extrabold text-[#0d0c10]">
                     {data.budgets.activeIncidents} active budget incident{data.budgets.activeIncidents === 1 ? "" : "s"}
                   </p>
-                  <p className="text-xs text-red-100/70">
+                  <p className="text-xs font-mono font-bold text-[#3a3340]">
                     {data.budgets.pausedAgents} agents paused · {data.budgets.pausedProjects} projects paused · {data.budgets.pendingApprovals} pending budget approvals
                   </p>
                 </div>
               </div>
-              <Link to="/costs" className="text-sm underline underline-offset-2 text-red-100">
+              <Link to="/costs" className="text-sm font-bold underline underline-offset-2 text-[#0d0c10]">
                 Open budgets
               </Link>
             </div>
           ) : null}
 
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-1 sm:gap-2">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
             <MetricCard
-              icon={Bot}
               value={data.agents.active + data.agents.running + data.agents.paused + data.agents.error}
               label="Agents Enabled"
               to="/agents"
-              tone="success"
+              color="#C2EED8"
               description={
                 <span>
-                  {data.agents.running} running{", "}
-                  {data.agents.paused} paused{", "}
+                  {data.agents.running} running{" · "}
+                  {data.agents.paused} paused{" · "}
                   {data.agents.error} errors
                 </span>
               }
             />
             <MetricCard
-              icon={CircleDot}
               value={data.tasks.inProgress}
               label="Tasks In Progress"
               to="/issues"
-              tone="info"
+              color="#C8E5FF"
               description={
                 <span>
-                  {data.tasks.open} open{", "}
+                  {data.tasks.open} open{" · "}
                   {data.tasks.blocked} blocked
                 </span>
               }
             />
             <MetricCard
-              icon={DollarSign}
               value={formatCents(data.costs.monthSpendCents)}
               label="Month Spend"
               to="/costs"
-              tone="spend"
+              color="#FFE0BB"
               description={
                 <span>
                   {data.costs.monthBudgetCents > 0
@@ -280,11 +277,10 @@ export function Dashboard() {
               }
             />
             <MetricCard
-              icon={ShieldCheck}
               value={data.pendingApprovals + data.budgets.pendingApprovals}
               label="Pending Approvals"
               to="/approvals"
-              tone="warning"
+              color="#FFD2EA"
               description={
                 <span>
                   {data.budgets.pendingApprovals > 0
@@ -295,17 +291,17 @@ export function Dashboard() {
             />
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <ChartCard title="Run Activity" subtitle="Last 14 days">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <ChartCard title="Run Activity" subtitle="Last 14 days" color="#27D17F">
               <RunActivityChart activity={data.runActivity} />
             </ChartCard>
-            <ChartCard title="Issues by Priority" subtitle="Last 14 days">
+            <ChartCard title="Issues by Priority" subtitle="Last 14 days" color="#FF4D2E">
               <PriorityChart issues={issues ?? []} />
             </ChartCard>
-            <ChartCard title="Issues by Status" subtitle="Last 14 days">
+            <ChartCard title="Issues by Status" subtitle="Last 14 days" color="#1FA7FF">
               <IssueStatusChart issues={issues ?? []} />
             </ChartCard>
-            <ChartCard title="Success Rate" subtitle="Last 14 days">
+            <ChartCard title="Success Rate" subtitle="Last 14 days" color="#FFC83A">
               <SuccessRateChart activity={data.runActivity} />
             </ChartCard>
           </div>
@@ -313,83 +309,90 @@ export function Dashboard() {
           <PluginSlotOutlet
             slotTypes={["dashboardWidget"]}
             context={{ companyId: selectedCompanyId }}
-            className="grid gap-4 md:grid-cols-2"
-            itemClassName="rounded-lg border bg-card p-4 shadow-sm"
+            className="grid gap-3 md:grid-cols-2"
+            itemClassName="stack-card p-4"
           />
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-3">
             {/* Recent Activity */}
             {recentActivity.length > 0 && (
               <div className="min-w-0">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                  Recent Activity
-                </h3>
-                <div className="border border-border divide-y divide-border overflow-hidden">
-                  {recentActivity.map((event) => (
-                    <ActivityRow
-                      key={event.id}
-                      event={event}
-                      agentMap={agentMap}
-                      userProfileMap={userProfileMap}
-                      entityNameMap={entityNameMap}
-                      entityTitleMap={entityTitleMap}
-                      className={animatedActivityIds.has(event.id) ? "activity-row-enter" : undefined}
-                    />
-                  ))}
+                <div className="stack-card flex flex-col min-h-0 overflow-hidden">
+                  <div className="stack-panel-header" style={{ ["--stack-accent" as string]: "#A4D81F" }}>
+                    <span className="w-3 h-3 rounded-full bg-[#0d0c10]" />
+                    RECENT ACTIVITY
+                    <span className="flex-1" />
+                    <span className="font-mono text-[10px] font-bold">{recentActivity.length} events</span>
+                  </div>
+                  <div className="flex-1 overflow-hidden divide-y-[1.5px] divide-[#0d0c10]">
+                    {recentActivity.map((event) => (
+                      <ActivityRow
+                        key={event.id}
+                        event={event}
+                        agentMap={agentMap}
+                        userProfileMap={userProfileMap}
+                        entityNameMap={entityNameMap}
+                        entityTitleMap={entityTitleMap}
+                        className={animatedActivityIds.has(event.id) ? "activity-row-enter" : undefined}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Recent Tasks */}
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                Recent Tasks
-              </h3>
-              {recentIssues.length === 0 ? (
-                <div className="border border-border p-4">
-                  <p className="text-sm text-muted-foreground">No tasks yet.</p>
+              <div className="stack-card flex flex-col min-h-0 overflow-hidden">
+                <div className="stack-panel-header" style={{ ["--stack-accent" as string]: "#FFC83A" }}>
+                  <span className="w-3 h-3 rounded-full bg-[#0d0c10]" />
+                  RECENT TASKS
+                  <span className="flex-1" />
+                  <span className="font-mono text-[10px] font-bold">{recentIssues.length} open</span>
                 </div>
-              ) : (
-                <div className="border border-border divide-y divide-border overflow-hidden">
-                  {recentIssues.slice(0, 10).map((issue) => (
-                    <Link
-                      key={issue.id}
-                      to={`/issues/${issue.identifier ?? issue.id}`}
-                      className="px-4 py-3 text-sm cursor-pointer hover:bg-accent/50 transition-colors no-underline text-inherit block"
-                    >
-                      <div className="flex items-start gap-2 sm:items-center sm:gap-3">
-                        {/* Status icon - left column on mobile */}
-                        <span className="shrink-0 sm:hidden">
-                          <StatusIcon status={issue.status} blockerAttention={issue.blockerAttention} />
-                        </span>
-
-                        {/* Right column on mobile: title + metadata stacked */}
-                        <span className="flex min-w-0 flex-1 flex-col gap-1 sm:contents">
-                          <span className="line-clamp-2 text-sm sm:order-2 sm:flex-1 sm:min-w-0 sm:line-clamp-none sm:truncate">
-                            {issue.title}
+                {recentIssues.length === 0 ? (
+                  <div className="p-4">
+                    <p className="text-sm font-semibold text-[#5a525e]">No tasks yet.</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-hidden divide-y-[1.5px] divide-[#0d0c10]">
+                    {recentIssues.slice(0, 10).map((issue) => (
+                      <Link
+                        key={issue.id}
+                        to={`/issues/${issue.identifier ?? issue.id}`}
+                        className="px-4 py-3 text-sm cursor-pointer hover:bg-[#FFF1B8]/40 transition-colors no-underline text-inherit block"
+                      >
+                        <div className="flex items-start gap-2 sm:items-center sm:gap-3">
+                          <span className="shrink-0 sm:hidden">
+                            <StatusIcon status={issue.status} blockerAttention={issue.blockerAttention} />
                           </span>
-                          <span className="flex items-center gap-2 sm:order-1 sm:shrink-0">
-                            <span className="hidden sm:inline-flex"><StatusIcon status={issue.status} blockerAttention={issue.blockerAttention} /></span>
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {issue.identifier ?? issue.id.slice(0, 8)}
+                          <span className="flex min-w-0 flex-1 flex-col gap-1 sm:contents">
+                            <span className="line-clamp-2 text-sm font-semibold sm:order-2 sm:flex-1 sm:min-w-0 sm:line-clamp-none sm:truncate text-[#0d0c10]">
+                              {issue.title}
                             </span>
-                            {issue.assigneeAgentId && (() => {
-                              const name = agentName(issue.assigneeAgentId);
-                              return name
-                                ? <span className="hidden sm:inline-flex"><Identity name={name} agentId={issue.assigneeAgentId} size="sm" /></span>
-                                : null;
-                            })()}
-                            <span className="text-xs text-muted-foreground sm:hidden">&middot;</span>
-                            <span className="text-xs text-muted-foreground shrink-0 sm:order-last">
-                              {timeAgo(issue.updatedAt)}
+                            <span className="flex items-center gap-2 sm:order-1 sm:shrink-0">
+                              <span className="hidden sm:inline-flex"><StatusIcon status={issue.status} blockerAttention={issue.blockerAttention} /></span>
+                              <span className="text-xs font-mono font-bold text-[#5a525e]">
+                                {issue.identifier ?? issue.id.slice(0, 8)}
+                              </span>
+                              {issue.assigneeAgentId && (() => {
+                                const name = agentName(issue.assigneeAgentId);
+                                return name
+                                  ? <span className="hidden sm:inline-flex"><Identity name={name} size="sm" /></span>
+                                  : null;
+                              })()}
+                              <span className="text-xs text-[#5a525e] sm:hidden">·</span>
+                              <span className="text-xs text-[#5a525e] shrink-0 sm:order-last font-mono font-bold">
+                                {timeAgo(issue.updatedAt)}
+                              </span>
                             </span>
                           </span>
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

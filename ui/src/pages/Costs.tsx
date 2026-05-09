@@ -32,6 +32,7 @@ import { billingTypeDisplayName, cn, formatCents, formatTokens, providerDisplayN
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StackKpi, StackButton, StackPanel, StackCard } from "@/components/stack";
 
 const NO_COMPANY = "__none__";
 
@@ -72,26 +73,15 @@ function MetricTile({
   label,
   value,
   subtitle,
-  icon: Icon,
+  color,
 }: {
   label: string;
   value: string;
   subtitle: string;
-  icon: ComponentType<{ className?: string }>;
+  color: string;
 }) {
   return (
-    <div className="border border-border p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
-          <div className="mt-2 text-2xl font-semibold tabular-nums">{value}</div>
-          <div className="mt-1 text-xs leading-5 text-muted-foreground">{subtitle}</div>
-        </div>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-border">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-        </div>
-      </div>
-    </div>
+    <StackKpi label={label} big={value} sub={subtitle} color={color} />
   );
 }
 
@@ -109,40 +99,38 @@ function FinanceSummaryCard({
   eventCount: number;
 }) {
   return (
-    <Card>
-      <CardHeader className="px-5 pt-5 pb-2">
-        <CardTitle className="text-base">Finance ledger</CardTitle>
-        <CardDescription>
-          Account-level charges that do not map to a single inference request.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-3 px-5 pb-5 pt-2 sm:grid-cols-2 xl:grid-cols-4">
+    <StackPanel
+      title="Finance ledger"
+      color="#FF8A1A"
+      right={<span className="font-mono text-[10px] font-bold">{eventCount} events</span>}
+    >
+      <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricTile
           label="Debits"
           value={formatCents(debitCents)}
           subtitle={`${eventCount} total event${eventCount === 1 ? "" : "s"} in range`}
-          icon={ArrowUpRight}
+          color="#FF4D2E"
         />
         <MetricTile
           label="Credits"
           value={formatCents(creditCents)}
           subtitle="Refunds, offsets, and credit returns"
-          icon={ArrowDownLeft}
+          color="#27D17F"
         />
         <MetricTile
           label="Net"
           value={formatCents(netCents)}
           subtitle="Debit minus credit for the selected period"
-          icon={ReceiptText}
+          color="#1FA7FF"
         />
         <MetricTile
           label="Estimated"
           value={formatCents(estimatedDebitCents)}
           subtitle="Estimated debits that are not yet invoice-authoritative"
-          icon={Coins}
+          color="#FFC83A"
         />
-      </CardContent>
-    </Card>
+      </div>
+    </StackPanel>
   );
 }
 
@@ -549,20 +537,19 @@ export function Costs() {
 
             <div className="flex flex-wrap items-center gap-2">
               {PRESET_KEYS.map((key) => (
-                <Button
+                <StackButton
                   key={key}
-                  variant={preset === key ? "secondary" : "ghost"}
-                  size="sm"
+                  color={preset === key ? "#FF8A1A" : undefined}
                   onClick={() => setPreset(key)}
                 >
                   {PRESET_LABELS[key]}
-                </Button>
+                </StackButton>
               ))}
             </div>
           </div>
 
           {preset === "custom" ? (
-            <div className="flex flex-wrap items-center gap-2 border border-border p-3">
+            <div className="flex flex-wrap items-center gap-2 stack-card p-3">
               <input
                 type="date"
                 value={customFrom}
@@ -584,7 +571,7 @@ export function Costs() {
               label="Inference spend"
               value={formatCents(spendData?.summary.spendCents ?? 0)}
               subtitle={`${formatTokens(inferenceTokenTotal)} tokens across request-scoped events`}
-              icon={DollarSign}
+              color="#FF8A1A"
             />
             <MetricTile
               label="Budget"
@@ -600,19 +587,19 @@ export function Costs() {
                     ? `${formatCents(spendData.summary.spendCents)} of ${formatCents(spendData.summary.budgetCents)}`
                     : "No monthly cap configured"
               }
-              icon={Coins}
+              color="#FF4D2E"
             />
             <MetricTile
               label="Finance net"
               value={formatCents(financeData?.summary.netCents ?? 0)}
               subtitle={`${formatCents(financeData?.summary.debitCents ?? 0)} debits · ${formatCents(financeData?.summary.creditCents ?? 0)} credits`}
-              icon={ReceiptText}
+              color="#27D17F"
             />
             <MetricTile
               label="Finance events"
               value={String(financeData?.summary.eventCount ?? 0)}
               subtitle={`${formatCents(financeData?.summary.estimatedDebitCents ?? 0)} estimated in range`}
-              icon={ArrowUpRight}
+              color="#1FA7FF"
             />
           </div>
       </div>
@@ -850,25 +837,25 @@ export function Costs() {
                     label="Active incidents"
                     value={String(activeBudgetIncidents.length)}
                     subtitle="Open soft or hard threshold crossings"
-                    icon={ReceiptText}
+                    color="#FF4D2E"
                   />
                   <MetricTile
                     label="Pending approvals"
                     value={String(budgetData?.pendingApprovalCount ?? 0)}
                     subtitle="Budget override approvals awaiting board action"
-                    icon={ArrowUpRight}
+                    color="#FFC83A"
                   />
                   <MetricTile
                     label="Paused agents"
                     value={String(budgetData?.pausedAgentCount ?? 0)}
                     subtitle="Agent heartbeats blocked by budget"
-                    icon={Coins}
+                    color="#FF8A1A"
                   />
                   <MetricTile
                     label="Paused projects"
                     value={String(budgetData?.pausedProjectCount ?? 0)}
                     subtitle="Project execution blocked by budget"
-                    icon={DollarSign}
+                    color="#1FA7FF"
                   />
                 </CardContent>
               </Card>

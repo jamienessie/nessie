@@ -5,19 +5,19 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full border border-transparent px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  "inline-flex items-center justify-center rounded-full border-[1.5px] border-[#0d0c10] px-2 py-0.5 text-[10px] font-extrabold w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-[#0d0c10] focus-visible:ring-[#0d0c10]/50 focus-visible:ring-[2px] aria-invalid:ring-[#FF4D2E]/20 aria-invalid:border-[#FF4D2E] transition-[color,box-shadow] overflow-hidden font-mono uppercase tracking-wide",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+        default: "bg-[#0d0c10] text-[#fffaf0] [a&]:hover:bg-[#0d0c10]/90",
         secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
+          "bg-[#FFF8E8] text-[#0d0c10] [a&]:hover:bg-[#FFF1B8]",
         destructive:
-          "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "bg-[#FF4D2E] text-[#fffaf0] [a&]:hover:bg-[#FF4D2E]/90",
         outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline",
+          "bg-transparent text-[#0d0c10] [a&]:hover:bg-[#FFF1B8]",
+        ghost: "border-transparent [a&]:hover:bg-[#FFF1B8] [a&]:hover:text-[#0d0c10]",
+        link: "border-transparent text-[#0d0c10] underline-offset-4 [a&]:hover:underline",
       },
     },
     defaultVariants: {

@@ -69,8 +69,8 @@ export function IssueRow({
   const productivityReviewIndicator = productivityReview ? (
     <span
       className={cn(
-        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-300",
-        selected ? "border-muted-foreground text-muted-foreground" : null,
+        "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-[1.5px] border-[#0d0c10] bg-[#FFF1B8] text-[#0d0c10]",
+        selected ? "border-[#5a525e] text-[#5a525e]" : null,
       )}
       title={`Productivity review: ${productivityReviewTriggerLabel(productivityReview.trigger)}`}
       aria-label="Productivity review open"
@@ -86,7 +86,7 @@ export function IssueRow({
   ) : null;
   const planningModeIndicator = issue.workMode === "planning" ? (
     <span
-      className="ml-1.5 inline-flex shrink-0 items-center rounded-full border border-amber-500/60 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+      className="ml-1.5 inline-flex shrink-0 items-center border-[1.5px] border-[#0d0c10] bg-[#FFF1B8] px-2 py-0.5 text-[9.5px] font-extrabold text-[#0d0c10] font-mono uppercase tracking-wide"
       title="This issue is in planning mode."
     >
       Planning
@@ -95,11 +95,11 @@ export function IssueRow({
   const parkedBlockerIndicator = hasAssignedBacklogBlocker(issue.blockedBy) ? (
     <span
       data-testid="issue-row-parked-blocker"
-      className="ml-1.5 inline-flex shrink-0 items-center gap-0.5 rounded-full border border-amber-500/60 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300"
+      className="ml-1.5 inline-flex shrink-0 items-center gap-0.5 border-[1.5px] border-[#0d0c10] bg-[#FFF1B8] px-2 py-0.5 text-[9.5px] font-extrabold text-[#0d0c10] font-mono uppercase tracking-wide"
       title="Blocked by parked work — at least one assigned blocker is in backlog and will not wake its assignee."
     >
       <Flag className="h-2.5 w-2.5" aria-hidden />
-      Blocked by parked work
+      PARKED
     </span>
   ) : null;
 
@@ -114,9 +114,9 @@ export function IssueRow({
       aria-current={checklistCurrentStep ? "step" : undefined}
       onClickCapture={() => rememberIssueDetailLocationState(issuePathId, detailState)}
       className={cn(
-        "group flex items-start gap-2 border-b border-border py-2.5 pl-2 pr-3 text-sm no-underline text-inherit transition-colors last:border-b-0 sm:items-center sm:py-2 sm:pl-1",
-        selected ? "hover:bg-transparent" : "hover:bg-accent/50",
-        checklistCurrentStep ? "border-l-2 border-l-primary bg-primary/5 pl-[calc(theme(spacing.2)-2px)] sm:pl-[calc(theme(spacing.1)-2px)]" : null,
+        "group flex items-start gap-2 border-b-[1.5px] border-[#0d0c10] py-2.5 pl-2 pr-3 text-sm no-underline text-inherit transition-colors last:border-b-0 sm:items-center sm:py-2 sm:pl-1",
+        selected ? "hover:bg-transparent" : "hover:bg-[#FFF1B8]/40",
+        checklistCurrentStep ? "border-l-[3px] border-l-[#FF4D2E] bg-[#FF4D2E]/5 pl-[calc(theme(spacing.2)-3px)] sm:pl-[calc(theme(spacing.1)-3px)]" : null,
         className,
       )}
     >
@@ -127,7 +127,7 @@ export function IssueRow({
         {parkedBlockerIndicator}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1 sm:contents">
-        <span className={cn("line-clamp-2 text-sm sm:order-2 sm:min-w-0 sm:flex-1 sm:truncate sm:line-clamp-none", titleClassName)}>
+        <span className={cn("line-clamp-2 text-sm font-semibold text-[#0d0c10] sm:order-2 sm:min-w-0 sm:flex-1 sm:truncate sm:line-clamp-none", titleClassName)}>
           {issue.title}{titleSuffix}
         </span>
         {checklistDependencyChips ? (
@@ -146,7 +146,7 @@ export function IssueRow({
                 {productivityReviewIndicator}
               </span>
               {checklistStep}
-              <span className="shrink-0 font-mono text-xs text-muted-foreground">
+              <span className="shrink-0 font-mono text-[10px] font-bold text-[#5a525e]">
                 {identifier}
               </span>
               {planningModeIndicator}
@@ -155,10 +155,10 @@ export function IssueRow({
           )}
           {mobileMeta ? (
             <>
-              <span className="text-xs text-muted-foreground sm:hidden" aria-hidden="true">
+              <span className="text-xs text-[#5a525e] sm:hidden" aria-hidden="true">
                 &middot;
               </span>
-              <span className="text-xs text-muted-foreground sm:hidden">{mobileMeta}</span>
+              <span className="text-xs text-[#5a525e] sm:hidden">{mobileMeta}</span>
             </>
           ) : null}
         </span>
@@ -167,7 +167,7 @@ export function IssueRow({
         <span className="ml-auto hidden shrink-0 items-center gap-2 sm:order-3 sm:flex sm:gap-3">
           {desktopTrailing}
           {trailingMeta ? (
-            <span className="text-xs text-muted-foreground">{trailingMeta}</span>
+            <span className="text-[11px] font-mono font-bold text-[#5a525e]">{trailingMeta}</span>
           ) : null}
         </span>
       ) : null}
@@ -190,14 +190,14 @@ export function IssueRow({
               }}
               className={cn(
                 "inline-flex h-4 w-4 items-center justify-center rounded-full transition-colors",
-                selected ? "hover:bg-muted/80" : "hover:bg-blue-500/20",
+                selected ? "hover:bg-[#FFF8E8]" : "hover:bg-[#C8E5FF]/30",
               )}
               aria-label="Mark as read"
             >
               <span
                 className={cn(
                   "block h-2 w-2 rounded-full transition-opacity duration-300",
-                  selected ? "bg-muted-foreground/70" : "bg-blue-600 dark:bg-blue-400",
+                  selected ? "bg-[#5a525e]/70" : "bg-[#1FA7FF]",
                   unreadState === "fading" ? "opacity-0" : "opacity-100",
                 )}
               />
@@ -217,7 +217,7 @@ export function IssueRow({
                 onArchive();
               }}
               disabled={archiveDisabled}
-              className="inline-flex h-4 w-4 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-30"
+              className="inline-flex h-4 w-4 items-center justify-center text-[#5a525e] opacity-0 transition-opacity hover:text-[#0d0c10] group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-30"
               aria-label="Dismiss from inbox"
             >
               <X className="h-3.5 w-3.5" />

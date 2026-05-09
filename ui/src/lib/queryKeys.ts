@@ -7,6 +7,8 @@ export const queryKeys = {
   companySkills: {
     list: (companyId: string) => ["company-skills", companyId] as const,
     detail: (companyId: string, skillId: string) => ["company-skills", companyId, skillId] as const,
+    discovery: (companyId: string, sourceId: string, q: string, limit: number, offset: number) =>
+      ["company-skills", companyId, "discovery", sourceId, q, limit, offset] as const,
     updateStatus: (companyId: string, skillId: string) =>
       ["company-skills", companyId, skillId, "update-status"] as const,
     file: (companyId: string, skillId: string, relativePath: string) =>

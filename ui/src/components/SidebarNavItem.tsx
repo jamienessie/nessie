@@ -3,12 +3,12 @@ import { SIDEBAR_SCROLL_RESET_STATE } from "../lib/navigation-scroll";
 import { cn } from "../lib/utils";
 import { useSidebar } from "../context/SidebarContext";
 import type { LucideIcon } from "lucide-react";
-import type { SidebarTone } from "./SidebarSection";
 
 interface SidebarNavItemProps {
   to: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  swatchColor?: string;
   end?: boolean;
   className?: string;
   badge?: number;
@@ -17,21 +17,13 @@ interface SidebarNavItemProps {
   textBadgeTone?: "default" | "amber";
   alert?: boolean;
   liveCount?: number;
-  /** Section tone — colors the active-state left rail. */
-  tone?: SidebarTone;
 }
-
-const toneRailClass: Record<SidebarTone, string> = {
-  work: "before:bg-[var(--tone-work-rail)]",
-  company: "before:bg-[var(--tone-company-rail)]",
-  operator: "before:bg-[var(--tone-operator-rail)]",
-  neutral: "before:bg-foreground/40",
-};
 
 export function SidebarNavItem({
   to,
   label,
   icon: Icon,
+  swatchColor,
   end,
   className,
   badge,
@@ -40,7 +32,6 @@ export function SidebarNavItem({
   textBadgeTone = "default",
   alert = false,
   liveCount,
-  tone = "neutral",
 }: SidebarNavItemProps) {
   const { isMobile, setSidebarOpen } = useSidebar();
 
@@ -52,30 +43,33 @@ export function SidebarNavItem({
       onClick={() => { if (isMobile) setSidebarOpen(false); }}
       className={({ isActive }) =>
         cn(
-          "relative flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors",
-          // Left rail (3px) — only visible on active state
-          "before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r before:opacity-0 before:transition-opacity",
-          isActive
-            ? cn("bg-accent text-foreground before:opacity-100", toneRailClass[tone])
-            : "text-foreground/80 hover:bg-accent/50 hover:text-foreground",
+          "flex items-center gap-2.5 px-3 py-[6px] text-[13.5px] transition-all",
+          isActive ? "stack-nav-active" : "stack-nav-idle text-[#0d0c10] hover:bg-[#FFF1B8]/40",
           className,
         )
       }
     >
-      <span className="relative shrink-0">
-        <Icon className="h-4 w-4" />
-        {alert && (
-          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 shadow-[0_0_0_2px_hsl(var(--background))]" />
-        )}
-      </span>
-      <span className="flex-1 truncate">{label}</span>
+      {swatchColor ? (
+        <span
+          className="relative shrink-0 w-3.5 h-3.5 border-[1.5px] border-[#0d0c10]"
+          style={{ background: swatchColor }}
+        />
+      ) : Icon ? (
+        <span className="relative shrink-0">
+          <Icon className="h-4 w-4" />
+          {alert && (
+            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 bg-[#FF4D2E] border border-[#fffaf0]" />
+          )}
+        </span>
+      ) : null}
+      <span className="flex-1 truncate font-semibold">{label}</span>
       {textBadge && (
         <span
           className={cn(
-            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
+            "ml-auto px-1.5 py-0.5 text-[10px] font-extrabold leading-none border-[1.5px] border-[#0d0c10]",
             textBadgeTone === "amber"
-              ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-              : "bg-muted text-muted-foreground",
+              ? "bg-[#FFC83A] text-[#0d0c10]"
+              : "bg-[#0d0c10] text-[#fffaf0]",
           )}
         >
           {textBadge}
@@ -83,20 +77,19 @@ export function SidebarNavItem({
       )}
       {liveCount != null && liveCount > 0 && (
         <span className="ml-auto flex items-center gap-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+          <span className="w-2 h-2 bg-[#27D17F] border border-[#0d0c10] stack-pulse" />
+          <span className="text-[10px] font-extrabold text-[#0d0c10] bg-[#27D17F] px-1.5 py-0.5 border-[1.5px] border-[#0d0c10]">
+            {liveCount} LIVE
           </span>
-          <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{liveCount} live</span>
         </span>
       )}
       {badge != null && badge > 0 && (
         <span
           className={cn(
-            "ml-auto rounded-full px-1.5 py-0.5 text-xs leading-none",
+            "ml-auto px-1.5 py-0.5 text-[10px] font-extrabold leading-none",
             badgeTone === "danger"
-              ? "bg-red-600/90 text-red-50"
-              : "bg-primary text-primary-foreground",
+              ? "bg-[#FF4D2E] text-[#fffaf0] border-[1.5px] border-[#0d0c10]"
+              : "bg-[#0d0c10] text-[#fffaf0]",
           )}
         >
           {badge}

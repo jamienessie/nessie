@@ -27,9 +27,9 @@ export function EntityRow({
 }: EntityRowProps) {
   const isClickable = !!(to || onClick);
   const classes = cn(
-    "flex items-center gap-3 px-4 py-2 text-sm border-b border-border last:border-b-0 transition-colors",
-    isClickable && "cursor-pointer hover:bg-accent/50",
-    selected && "bg-accent/30",
+    "flex items-center gap-3 px-4 py-2 text-sm border-b-[1.5px] border-[#0d0c10] last:border-b-0 transition-colors",
+    isClickable && "cursor-pointer hover:bg-[#FFF1B8]/40",
+    selected && "bg-[#FFF1B8]/50",
     className
   );
 
@@ -39,14 +39,14 @@ export function EntityRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {identifier && (
-            <span className="text-xs text-muted-foreground font-mono shrink-0 relative top-[1px]">
+            <span className="text-[10px] text-[#5a525e] font-mono font-bold shrink-0 relative top-[1px]">
               {identifier}
             </span>
           )}
-          <span className="truncate">{title}</span>
+          <span className="truncate font-semibold text-[#0d0c10]">{title}</span>
         </div>
         {subtitle && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
+          <p className="text-[11px] text-[#5a525e] font-semibold truncate mt-0.5">{subtitle}</p>
         )}
       </div>
       {trailing && <div className="flex items-center gap-2 shrink-0">{trailing}</div>}

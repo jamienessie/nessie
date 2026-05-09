@@ -21,6 +21,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { Button } from "@/components/ui/button";
 import type { Agent } from "@nessie/shared";
+import { StackCard, StackButton, StackChip } from "@/components/stack";
 
 const NO_COMPANY = "__none__";
 const OUTCOME_KINDS: OutcomeKind[] = ["DECIDE", "ACTION", "MEMORY", "ISSUE"];
@@ -40,20 +41,35 @@ function stateTone(s: MeetingState) {
 }
 
 function StateBadge({ state }: { state: MeetingState }) {
+  const colors: Record<MeetingState, string> = {
+    draft: "#FFF8E8",
+    preparing: "#C8E5FF",
+    active: "#C2EED8",
+    waiting_for_operator: "#FFE6B5",
+    synthesizing: "#DDD2FF",
+    completed: "#C2EED8",
+    abandoned: "#FFF8E8",
+    failed: "#FFD1C4",
+  };
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider ${stateTone(state)}`}>
+    <StackChip color={colors[state] || "#FFF8E8"} textColor="#0d0c10">
       {state.replaceAll("_", " ")}
-    </span>
+    </StackChip>
   );
 }
 
 function OutcomeKindBadge({ kind }: { kind: OutcomeKind }) {
-  const tone =
-    kind === "DECIDE" ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-    : kind === "ACTION" ? "bg-sky-500/15 text-sky-700 dark:text-sky-400"
-    : kind === "MEMORY" ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-400"
-    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
-  return <span className={`px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider ${tone}`}>{kind}</span>;
+  const colors: Record<OutcomeKind, string> = {
+    DECIDE: "#FFE6B5",
+    ACTION: "#C8E5FF",
+    MEMORY: "#DDD2FF",
+    ISSUE: "#C2EED8",
+  };
+  return (
+    <StackChip color={colors[kind]} textColor="#0d0c10">
+      {kind}
+    </StackChip>
+  );
 }
 
 function CreateMeetingForm({
@@ -93,7 +109,7 @@ function CreateMeetingForm({
 
   return (
     <form
-      className="space-y-3 border border-border bg-card p-4"
+      className="space-y-3 stack-card p-4"
       onSubmit={(e) => {
         e.preventDefault();
         if (title.trim()) mutation.mutate();
@@ -184,10 +200,10 @@ function CreateMeetingForm({
         </p>
       )}
       <div className="flex items-center gap-2 pt-1">
-        <Button type="submit" size="sm" disabled={mutation.isPending || !title.trim()}>
+        <StackButton type="submit" color="#B872FF" disabled={mutation.isPending || !title.trim()}>
           {mutation.isPending ? "Creating…" : "Create meeting"}
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+        </StackButton>
+        <StackButton onClick={onCancel}>Cancel</StackButton>
       </div>
     </form>
   );
@@ -466,7 +482,7 @@ function MeetingRow({
   onMutated: () => void;
 }) {
   return (
-    <div className="border border-border bg-card">
+    <div className="stack-card">
       <div className="flex w-full items-center gap-3 px-3 py-2.5">
         <button
           type="button"
@@ -498,7 +514,7 @@ function MeetingRow({
         </button>
         <Link
           to={`/meetings/${meeting.id}/room`}
-          className="ml-2 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-accent/50"
+          className="ml-2 inline-flex items-center gap-1 border-[1.5px] border-[#0d0c10] bg-[#fffaf0] px-2 py-1 text-xs font-bold uppercase tracking-wider hover:bg-[#FFF1B8] transition-colors no-underline text-[#0d0c10]"
           title="Enter live meeting room"
         >
           <DoorOpen className="h-3 w-3" />
@@ -565,37 +581,27 @@ export function Meetings() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-1">
-          <button
-            type="button"
+          <StackButton
+            color={filter === "all" ? "#B872FF" : undefined}
             onClick={() => setFilter("all")}
-            className={`border px-2 py-1 text-[11px] uppercase tracking-wider ${
-              filter === "all"
-                ? "border-foreground bg-foreground text-background"
-                : "border-border text-muted-foreground hover:bg-accent"
-            }`}
           >
             All ({meetings.length})
-          </button>
+          </StackButton>
           {MEETING_STATES.map((s) => (
-            <button
+            <StackButton
               key={s}
-              type="button"
+              color={filter === s ? "#B872FF" : undefined}
               onClick={() => setFilter(s)}
-              className={`border px-2 py-1 text-[11px] uppercase tracking-wider ${
-                filter === s
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border text-muted-foreground hover:bg-accent"
-              }`}
             >
               {s.replaceAll("_", " ")}
-            </button>
+            </StackButton>
           ))}
         </div>
         {!creating && (
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Users className="mr-1.5 h-3.5 w-3.5" />
+          <StackButton color="#B872FF" onClick={() => setCreating(true)}>
+            <Users className="h-3.5 w-3.5" />
             New meeting
-          </Button>
+          </StackButton>
         )}
       </div>
 

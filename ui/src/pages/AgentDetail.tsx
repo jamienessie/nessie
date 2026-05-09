@@ -48,6 +48,7 @@ import { describeRunRetryState } from "../lib/runRetryState";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
+import { StackButton, StackCard, StackKpi } from "@/components/stack";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Popover,
@@ -936,14 +937,13 @@ export function AgentDetail() {
           </div>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
+          <StackButton
+            color="#27D17F"
             onClick={() => openNewIssue({ assigneeAgentId: agent.id })}
           >
-            <Plus className="h-3.5 w-3.5 sm:mr-1" />
+            <Plus className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Assign Task</span>
-          </Button>
+          </StackButton>
           <RunButton
             onClick={() => agentAction.mutate("invoke")}
             disabled={agentAction.isPending || isPendingApproval}
@@ -1234,8 +1234,8 @@ function LatestRunCard({ runs, agentId }: { runs: HeartbeatRun[]; agentId: strin
       <Link
         to={`/agents/${agentId}/runs/${run.id}`}
         className={cn(
-          "block border rounded-lg p-4 space-y-2 w-full no-underline transition-colors hover:bg-muted/50 cursor-pointer",
-          isLive ? "border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.08)]" : "border-border"
+          "stack-card block space-y-2 w-full no-underline transition-colors hover:bg-[#FFF8E8]/50 cursor-pointer",
+          isLive && "shadow-[0_0_12px_rgba(6,182,212,0.08)]"
         )}
       >
         <div className="flex items-center gap-2">
@@ -1316,7 +1316,7 @@ function AgentOverview({
         {assignedIssues.length === 0 ? (
           <p className="text-sm text-muted-foreground">No recent issues.</p>
         ) : (
-          <div className="border border-border rounded-lg">
+          <StackCard accent="#FFC83A">
             {assignedIssues.slice(0, 10).map((issue) => (
               <EntityRow
                 key={issue.id}
@@ -1327,11 +1327,11 @@ function AgentOverview({
               />
             ))}
             {assignedIssues.length > 10 && (
-              <div className="px-3 py-2 text-xs text-muted-foreground text-center border-t border-border">
+              <div className="px-3 py-2 text-xs text-muted-foreground text-center border-t-[1.5px] border-[#0d0c10]">
                 +{assignedIssues.length - 10} more issues
               </div>
             )}
-          </div>
+          </StackCard>
         )}
       </div>
 
@@ -1363,32 +1363,20 @@ function CostsSection({
   return (
     <div className="space-y-4">
       {runtimeState && (
-        <div className="border border-border rounded-lg p-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 tabular-nums">
-            <div>
-              <span className="text-xs text-muted-foreground block">Input tokens</span>
-              <span className="text-lg font-semibold">{formatTokens(runtimeState.totalInputTokens)}</span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Output tokens</span>
-              <span className="text-lg font-semibold">{formatTokens(runtimeState.totalOutputTokens)}</span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Cached tokens</span>
-              <span className="text-lg font-semibold">{formatTokens(runtimeState.totalCachedInputTokens)}</span>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block">Total cost</span>
-              <span className="text-lg font-semibold">{formatCents(runtimeState.totalCostCents)}</span>
-            </div>
+        <StackCard accent="#27D17F">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 tabular-nums p-4">
+            <StackKpi label="Input tokens" big={formatTokens(runtimeState.totalInputTokens)} color="#C8E5FF" />
+            <StackKpi label="Output tokens" big={formatTokens(runtimeState.totalOutputTokens)} color="#DDD2FF" />
+            <StackKpi label="Cached tokens" big={formatTokens(runtimeState.totalCachedInputTokens)} color="#FFF8E8" />
+            <StackKpi label="Total cost" big={formatCents(runtimeState.totalCostCents)} color="#C2EED8" />
           </div>
-        </div>
+        </StackCard>
       )}
       {runsWithCost.length > 0 && (
-        <div className="border border-border rounded-lg overflow-hidden">
+          <StackCard accent="#27D17F">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-border bg-accent/20">
+              <tr className="border-b-[1.5px] border-[#0d0c10]">
                 <th className="text-left px-3 py-2 font-medium text-muted-foreground">Date</th>
                 <th className="text-left px-3 py-2 font-medium text-muted-foreground">Run</th>
                 <th className="text-right px-3 py-2 font-medium text-muted-foreground">Input</th>
@@ -1400,7 +1388,7 @@ function CostsSection({
               {runsWithCost.slice(0, 10).map((run) => {
                 const metrics = runMetrics(run);
                 return (
-                  <tr key={run.id} className="border-b border-border last:border-b-0">
+                  <tr key={run.id} className="border-b-[1.5px] border-[#0d0c10] last:border-b-0">
                     <td className="px-3 py-2">{formatDate(run.createdAt)}</td>
                     <td className="px-3 py-2 font-mono">{run.id.slice(0, 8)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{formatTokens(metrics.input)}</td>
@@ -1416,7 +1404,7 @@ function CostsSection({
               })}
             </tbody>
           </table>
-        </div>
+        </StackCard>
       )}
     </div>
   );
@@ -2990,11 +2978,11 @@ function RunsTab({
       );
     }
     return (
-      <div className="border border-border rounded-lg overflow-x-hidden">
+      <StackCard accent="#27D17F">
         {sorted.map((run) => (
           <RunListItem key={run.id} run={run} isSelected={false} agentId={agentRouteId} />
         ))}
-      </div>
+      </StackCard>
     );
   }
 
@@ -3002,8 +2990,8 @@ function RunsTab({
   return (
     <div className="flex gap-0">
       {/* Left: run list — border stretches full height, content sticks */}
-      <div className={cn(
-        "shrink-0 border border-border rounded-lg",
+      <StackCard accent="#27D17F" className={cn(
+        "shrink-0",
         selectedRun ? "w-72" : "w-full",
       )}>
         <div className="sticky top-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 2rem)" }}>
@@ -3011,7 +2999,7 @@ function RunsTab({
           <RunListItem key={run.id} run={run} isSelected={run.id === effectiveRunId} agentId={agentRouteId} />
         ))}
         </div>
-      </div>
+      </StackCard>
 
       {/* Right: run detail — natural height, page scrolls */}
       {selectedRun && (
@@ -3961,7 +3949,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
           )}
         </div>
       </div>
-      <div className="max-h-[38rem] overflow-y-auto rounded-2xl border border-border/70 bg-background/40 p-3 sm:p-4">
+      <div className="max-h-[38rem] overflow-y-auto stack-card p-3 sm:p-4">
         <RunTranscriptView
           entries={transcript}
           mode={transcriptMode}
@@ -3970,15 +3958,12 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
         />
         {hasMoreLog && (
           <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
+            <StackButton
               onClick={loadMorePersistedLog}
               disabled={loadingMoreLog}
             >
               {loadingMoreLog ? "Loading..." : "Load more log"}
-            </Button>
+            </StackButton>
             <span className="text-xs text-muted-foreground">
               Showing the first {Math.round(logOffset / 1024).toLocaleString("en-US")} KB
               {typeof run.logBytes === "number" && run.logBytes > 0

@@ -44,14 +44,22 @@ function ChartLegend({ items }: { items: { color: string; label: string }[] }) {
   );
 }
 
-export function ChartCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+export function ChartCard({ title, subtitle, children, color = "#FFC83A" }: { title: string; subtitle?: string; children: React.ReactNode; color?: string }) {
   return (
-    <div className="border border-border rounded-lg p-4 space-y-3">
-      <div>
-        <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
-        {subtitle && <span className="text-[10px] text-muted-foreground/60">{subtitle}</span>}
+    <div
+      className="flex flex-col min-h-0 overflow-hidden"
+      style={{ background: "#fffaf0", border: "2px solid #0d0c10", boxShadow: "4px 4px 0 0 #0d0c10" }}
+    >
+      <div
+        className="px-3 py-1.5 border-b-[2px] border-[#0d0c10] flex items-center gap-2 text-[12px] font-extrabold tracking-wide"
+        style={{ background: color, color: "#0d0c10" }}
+      >
+        <span className="w-3 h-3 bg-[#0d0c10] rounded-full" />
+        {title.toUpperCase()}
+        <span className="flex-1" />
+        {subtitle && <span className="font-mono text-[10px] font-bold opacity-70">{subtitle}</span>}
       </div>
-      {children}
+      <div className="p-3 flex-1 min-h-0">{children}</div>
     </div>
   );
 }

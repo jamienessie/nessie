@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, SlidersHorizontal } from "lucide-react";
 import type { Goal, Project } from "@nessie/shared";
+import { StackButton, StackCard } from "@/components/stack";
 
 interface GoalPropertiesToggleButtonProps {
   panelVisible: boolean;
@@ -188,14 +189,10 @@ export function GoalDetail() {
 
         <TabsContent value="children" className="mt-4 space-y-3">
           <div className="flex items-center justify-start">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => openNewGoal({ parentId: goalId })}
-            >
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
+            <StackButton color="#1FA7FF" onClick={() => openNewGoal({ parentId: goalId })}>
+              <Plus className="h-3.5 w-3.5" />
               Sub Goal
-            </Button>
+            </StackButton>
           </div>
           {childGoals.length === 0 ? (
             <p className="text-sm text-muted-foreground">No sub-goals.</p>
@@ -208,7 +205,7 @@ export function GoalDetail() {
           {linkedProjects.length === 0 ? (
             <p className="text-sm text-muted-foreground">No linked projects.</p>
           ) : (
-            <div className="border border-border">
+            <StackCard accent="#1FA7FF">
               {linkedProjects.map((project) => (
                 <EntityRow
                   key={project.id}
@@ -218,7 +215,7 @@ export function GoalDetail() {
                   trailing={<StatusBadge status={project.status} />}
                 />
               ))}
-            </div>
+            </StackCard>
           )}
         </TabsContent>
       </Tabs>

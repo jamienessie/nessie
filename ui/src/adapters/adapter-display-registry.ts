@@ -104,6 +104,11 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     description: "Local Pi agent",
     icon: Terminal,
   },
+  windsurf_local: {
+    label: "Windsurf SWE",
+    description: "Windsurf SWE via Devin Terminal",
+    icon: Terminal,
+  },
   cursor: {
     label: "Cursor",
     description: "Local Cursor agent",

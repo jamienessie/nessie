@@ -12,6 +12,7 @@ import { PageSkeleton } from "../components/PageSkeleton";
 import { AgentIcon } from "../components/AgentIconPicker";
 import { Download, Maximize2, Minus, Network, Plus, Upload } from "lucide-react";
 import { AGENT_ROLE_LABELS, type Agent } from "@nessie/shared";
+import { StackButton } from "@/components/stack";
 
 // Layout constants
 const CARD_W = 200;
@@ -444,16 +445,16 @@ export function OrgChart() {
     <div className="flex h-[calc(100dvh-9rem)] min-h-[420px] flex-col md:h-full md:min-h-0">
       <div className="mb-2 flex shrink-0 flex-wrap items-center justify-start gap-2">
         <Link to="/company/import">
-          <Button variant="outline" size="sm">
-            <Upload className="mr-1.5 h-3.5 w-3.5" />
+          <StackButton>
+            <Upload className="h-3.5 w-3.5" />
             Import company
-          </Button>
+          </StackButton>
         </Link>
         <Link to="/company/export">
-          <Button variant="outline" size="sm">
-            <Download className="mr-1.5 h-3.5 w-3.5" />
+          <StackButton>
+            <Download className="h-3.5 w-3.5" />
             Export company
-          </Button>
+          </StackButton>
         </Link>
       </div>
       <div
@@ -565,7 +566,7 @@ export function OrgChart() {
               <div
                 key={node.id}
                 data-org-card
-                className="absolute bg-card border border-border rounded-lg shadow-sm hover:shadow-md hover:border-foreground/20 transition-[box-shadow,border-color] duration-150 cursor-pointer select-none"
+                className="absolute stack-card hover:shadow-md hover:border-foreground/20 transition-[box-shadow,border-color] duration-150 cursor-pointer select-none"
                 style={{
                   left: node.x,
                   top: node.y,
