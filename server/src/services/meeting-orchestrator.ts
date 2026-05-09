@@ -45,7 +45,7 @@ interface AgentRow {
 }
 
 const TURN_DELAY_MS = 600;
-const TURN_TIMEOUT_MS = 90_000;
+const TURN_TIMEOUT_MS = 45_000;
 const MAX_PRIOR_TURNS_IN_PROMPT = 30;
 
 // Local-CLI adapters (claude_local, codex_local) stream structured
@@ -184,7 +184,10 @@ export async function runOneTurn(input: {
   meetingId: string;
   agentId: string;
   agentRole: string;
-}): Promise<{ ok: true; bodyMarkdown: string; costCents: number } | { ok: false; error: string }> {
+}): Promise<
+  | { ok: true; bodyMarkdown: string; costCents: number }
+  | { ok: false; error: string; terminal?: boolean }
+> {
   const svc = meetingsService(input.db);
   const meeting = await svc.get(input.companyId, input.meetingId);
   if (!meeting) return { ok: false, error: "meeting not found" };
@@ -246,12 +249,18 @@ export async function runOneTurn(input: {
         else stderr += chunk;
       },
     });
+    let timedOut = false;
     const result = await Promise.race([
       executePromise,
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`turn timed out after ${TURN_TIMEOUT_MS / 1000}s`)), TURN_TIMEOUT_MS),
+        setTimeout(() => {
+          timedOut = true;
+          reject(new Error(`turn timed out after ${TURN_TIMEOUT_MS / 1000}s`));
+        }, TURN_TIMEOUT_MS),
       ),
-    ]);
+    ]).catch((err) => {
+      throw err;
+    });
     if (result.exitCode !== 0) {
       const message = result.errorMessage ?? stderr.trim() ?? `adapter exit ${result.exitCode}`;
       return { ok: false, error: message };
@@ -263,7 +272,12 @@ export async function runOneTurn(input: {
     return { ok: true, bodyMarkdown, costCents };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { ok: false, error: message };
+    // Timeouts are a strong signal the adapter is hung (likely waiting on
+    // a permission prompt for claude_local without dangerouslySkipPermissions,
+    // or a misconfigured env). Mark terminal so the loop drops the agent
+    // instead of burning more turns on them.
+    const terminal = /timed out/i.test(message);
+    return { ok: false, error: message, terminal };
   }
 }
 
@@ -420,7 +434,9 @@ async function runAutoLoop(input: {
       });
       const agentRow = await fetchAgent(input.db, next.agentId);
       const agentLabel = agentRow ? agentRow.name : "An attendee";
-      if (fails >= MAX_FAILS_PER_AGENT) {
+      // Terminal failures (timeouts, hard-broken adapters) skip the agent
+      // immediately. Soft failures get up to MAX_FAILS_PER_AGENT retries.
+      if (turn.terminal || fails >= MAX_FAILS_PER_AGENT) {
         skipped.add(next.agentId);
         await svc.addMessage({
           meetingId: input.meetingId,
