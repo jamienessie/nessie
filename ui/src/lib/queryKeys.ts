@@ -189,4 +189,13 @@ export const queryKeys = {
   adapters: {
     all: ["adapters"] as const,
   },
+  plugInJanitor: {
+    identity: (companyId: string) => ["plug-in-janitor", "identity", companyId] as const,
+    reports: (companyId: string) => ["plug-in-janitor", "reports", companyId] as const,
+    reportDetail: (companyId: string, reportId: string) =>
+      ["plug-in-janitor", "report", companyId, reportId] as const,
+    openOutages: (companyId: string) => ["plug-in-janitor", "outages", "open", companyId] as const,
+    allOutages: (companyId: string) => ["plug-in-janitor", "outages", "all", companyId] as const,
+    pausedAgents: (companyId: string) => ["plug-in-janitor", "paused-agents", companyId] as const,
+  },
 };

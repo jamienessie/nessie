@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   ScrollText,
+  Wrench,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink } from "@/lib/router";
@@ -129,6 +130,7 @@ export function Sidebar() {
         <SidebarSection label="Operator">
           <SidebarNavItem to="/chief-of-staff" label="Chief of Staff" icon={Sparkles} />
           <SidebarNavItem to="/briefs" label="Executive Briefs" icon={ScrollText} />
+          <SidebarNavItem to="/plug-in-janitor" label="Plug-In Janitor" icon={Wrench} />
           <SidebarNavItem to="/hiring" label="Hiring" icon={UserPlus} />
           <SidebarNavItem to="/meetings" label="Meetings" icon={Users} />
           <SidebarNavItem to="/trust-layer" label="Trust Layer" icon={ShieldCheck} />

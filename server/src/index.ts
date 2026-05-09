@@ -498,6 +498,7 @@ export async function startServer(): Promise<StartedServer> {
     // cheap. Required for new agents to attach via departmentId.
     const { seedDefaultDepartments } = await import("./services/departments.js");
     const { hiresService } = await import("./services/hires.js");
+    const { seedPlugInJanitor } = await import("./services/plug-in-janitor-seed.js");
     const companyRows = await (db as any).select({ id: companies.id }).from(companies);
     const hires = hiresService(db as any);
     for (const company of companyRows) {
@@ -516,6 +517,19 @@ export async function startServer(): Promise<StartedServer> {
           { companyId: company.id, inserted: tmplResult.inserted, existing: tmplResult.existing },
           "Seeded role templates",
         );
+      }
+      // Phase 13: seed the Plug-In Janitor (Hank Brennan) + 15-min sweep
+      // routine. Idempotent. Skip if Engineering dept seeding failed.
+      try {
+        const janitorResult = await seedPlugInJanitor(db as any, company.id);
+        if (janitorResult.created) {
+          logger.info(
+            { companyId: company.id, agentId: janitorResult.agentId },
+            "Seeded Plug-In Janitor (Hank Brennan)",
+          );
+        }
+      } catch (err) {
+        logger.warn({ companyId: company.id, err }, "Failed to seed Plug-In Janitor; continuing");
       }
     }
   }
