@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/api/client";
 import { Topbar, Panel, Pulse, KvList, type TopbarTierState } from "@/components/cockpit";
+import { useCompany } from "@/context/CompanyContext";
+import { useDialogActions } from "@/context/DialogContext";
 
 // Phase 9.3 — segmented spend gauge: 4 segments T1/T2/T3/headroom
 // with white-25% inset glow per segment, matching the cockpit
@@ -69,10 +71,52 @@ function fmtCents(cents: number): string {
 }
 
 export function ControlTower() {
+  const { companies, loading: companiesLoading } = useCompany();
+  const { openOnboarding } = useDialogActions();
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [costs, setCosts] = useState<CostsToday | null>(null);
   const [proxyOk, setProxyOk] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Phase 10B.2 — empty state when no companies exist.
+  if (!companiesLoading && companies.length === 0) {
+    return (
+      <>
+        <Topbar label="CONTROL TOWER" />
+        <main className="cockpit-main">
+          <h1 className="cockpit-h1">
+            <Pulse color="var(--gold)" /> <b>CONTROL TOWER</b> · NO COMPANY YET
+          </h1>
+          <p className="cockpit-display">
+            Start with a <em>company</em>.
+          </p>
+          <p className="cockpit-lede">
+            A company is the container for your departments, agents, meetings, and goals. Create one, then hire your first agent from a role template in /hr.
+          </p>
+          <div className="gt-tier" style={{ ["--accent" as string]: "var(--gold)", maxWidth: 640, marginTop: 24, padding: "32px" } as React.CSSProperties}>
+            <div className="head"><Pulse /> getting started</div>
+            <div className="big" style={{ fontSize: 28, marginTop: 16 }}>Create your first company</div>
+            <p style={{ color: "var(--mute)", margin: "12px 0 20px", fontSize: 13 }}>
+              Opens the onboarding wizard. You'll pick a name and a one-line mission, and Nessie seeds 8 departments + 16 named role templates ready to hire from.
+            </p>
+            <button
+              type="button"
+              onClick={() => openOnboarding()}
+              style={{
+                padding: "10px 20px", borderRadius: 8,
+                background: "var(--gold)", color: "var(--bg)",
+                border: "1px solid var(--gold)", cursor: "pointer",
+                fontFamily: "Geist Mono, monospace", fontSize: 11, fontWeight: 700,
+                letterSpacing: "0.08em", textTransform: "uppercase",
+              }}
+            >
+              + New company
+            </button>
+          </div>
+        </main>
+      </>
+    );
+  }
 
   useEffect(() => {
     let cancelled = false;

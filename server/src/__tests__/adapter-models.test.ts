@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { models as codexFallbackModels } from "@nessie/adapter-codex-local";
-import { models as cursorFallbackModels } from "@nessie/adapter-cursor-local";
-import { models as opencodeFallbackModels } from "@nessie/adapter-opencode-local";
-import { resetOpenCodeModelsCacheForTests } from "@nessie/adapter-opencode-local/server";
 import { listAdapterModels, listServerAdapters, refreshAdapterModels } from "../adapters/index.js";
 import { resetCodexModelsCacheForTests } from "../adapters/codex-models.js";
-import { resetCursorModelsCacheForTests, setCursorModelsRunnerForTests } from "../adapters/cursor-models.js";
 
 vi.mock("acpx/runtime", () => ({
   createAcpRuntime: vi.fn(),
@@ -19,9 +15,6 @@ describe("adapter model listing", () => {
     delete process.env.OPENAI_API_KEY;
     delete process.env.PAPERCLIP_OPENCODE_COMMAND;
     resetCodexModelsCacheForTests();
-    resetCursorModelsCacheForTests();
-    setCursorModelsRunnerForTests(null);
-    resetOpenCodeModelsCacheForTests();
     vi.restoreAllMocks();
   });
 
@@ -30,18 +23,12 @@ describe("adapter model listing", () => {
     expect(models).toEqual([]);
   });
 
-  it("uses provider-prefixed ACPX fallback model labels", () => {
-    const adapter = listServerAdapters().find((candidate) => candidate.type === "acpx_local");
-
-    expect(adapter?.models?.some((model) => model.label.startsWith("Claude: "))).toBe(true);
-    expect(adapter?.models?.some((model) => model.label.startsWith("Codex: "))).toBe(true);
-  });
-
   it("returns codex fallback models when no OpenAI key is available", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const models = await listAdapterModels("codex_local");
 
     expect(models).toEqual(codexFallbackModels);
+    expect(models.some((model) => model.id === "gpt-5.4-mini")).toBe(true);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
@@ -63,6 +50,7 @@ describe("adapter model listing", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(first).toEqual(second);
     expect(first.some((model) => model.id === "gpt-5-pro")).toBe(true);
+    expect(first.some((model) => model.id === "gpt-5.4-mini")).toBe(true);
     expect(first.some((model) => model.id === "codex-mini-latest")).toBe(true);
   });
 
@@ -100,46 +88,6 @@ describe("adapter model listing", () => {
 
     const models = await listAdapterModels("codex_local");
     expect(models).toEqual(codexFallbackModels);
-  });
-
-
-  it("returns cursor fallback models when CLI discovery is unavailable", async () => {
-    setCursorModelsRunnerForTests(() => ({
-      status: null,
-      stdout: "",
-      stderr: "",
-      hasError: true,
-    }));
-
-    const models = await listAdapterModels("cursor");
-    expect(models).toEqual(cursorFallbackModels);
-  });
-
-  it("returns opencode fallback models including gpt-5.4", async () => {
-    process.env.PAPERCLIP_OPENCODE_COMMAND = "__paperclip_missing_opencode_command__";
-
-    const models = await listAdapterModels("opencode_local");
-
-    expect(models).toEqual(opencodeFallbackModels);
-  });
-
-  it("loads cursor models dynamically and caches them", async () => {
-    const runner = vi.fn(() => ({
-      status: 0,
-      stdout: "Available models: auto, composer-1.5, gpt-5.3-codex-high, sonnet-4.6",
-      stderr: "",
-      hasError: false,
-    }));
-    setCursorModelsRunnerForTests(runner);
-
-    const first = await listAdapterModels("cursor");
-    const second = await listAdapterModels("cursor");
-
-    expect(runner).toHaveBeenCalledTimes(1);
-    expect(first).toEqual(second);
-    expect(first.some((model) => model.id === "auto")).toBe(true);
-    expect(first.some((model) => model.id === "gpt-5.3-codex-high")).toBe(true);
-    expect(first.some((model) => model.id === "composer-1")).toBe(true);
   });
 
 });

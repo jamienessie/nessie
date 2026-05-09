@@ -10,3 +10,4 @@ export { BurnBar } from "./BurnBar";
 export { StarBar } from "./StarBar";
 export { AvatarCircle } from "./AvatarCircle";
 export { AgentLabel, buildAgentDisplayParts, type AgentLabelInput, type AgentLabelProps } from "./AgentLabel";
+export { HireDialog } from "./HireDialog";
