@@ -6,6 +6,7 @@ import { cursorLocalUIAdapter } from "./cursor";
 import { geminiLocalUIAdapter } from "./gemini-local";
 import { openCodeLocalUIAdapter } from "./opencode-local";
 import { openRouterUIAdapter } from "./openrouter-compatible";
+import { geminiCompatibleUIAdapter } from "./gemini-compatible";
 import { piLocalUIAdapter } from "./pi-local";
 import { openClawGatewayUIAdapter } from "./openclaw-gateway";
 import { hermesLocalUIAdapter } from "./hermes-local";
@@ -58,6 +59,7 @@ function registerBuiltInUIAdapters() {
     hermesLocalUIAdapter,
     openCodeLocalUIAdapter,
     openRouterUIAdapter,
+    geminiCompatibleUIAdapter,
     piLocalUIAdapter,
     cursorLocalUIAdapter,
     openClawGatewayUIAdapter,

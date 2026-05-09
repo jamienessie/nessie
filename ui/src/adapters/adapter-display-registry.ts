@@ -89,6 +89,11 @@ const adapterDisplayMap: Record<string, AdapterDisplayInfo> = {
     description: "Remote OpenRouter model catalog",
     icon: Globe,
   },
+  gemini_compatible: {
+    label: "Google Gemini",
+    description: "Gemini API, free-tier models only",
+    icon: Gem,
+  },
   hermes_local: {
     label: "Hermes Agent",
     description: "Local Hermes CLI agent",

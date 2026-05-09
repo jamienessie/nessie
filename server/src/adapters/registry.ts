@@ -55,6 +55,18 @@ import {
   modelProfiles as openRouterCompatibleModelProfiles,
 } from "@nessie/adapter-openrouter-compatible";
 import {
+  execute as geminiCompatibleExecute,
+  listGeminiModels,
+  refreshGeminiModels,
+  testEnvironment as geminiCompatibleTestEnvironment,
+  sessionCodec as geminiCompatibleSessionCodec,
+} from "@nessie/adapter-gemini-compatible/server";
+import {
+  agentConfigurationDoc as geminiCompatibleAgentConfigurationDoc,
+  models as geminiCompatibleModels,
+  modelProfiles as geminiCompatibleModelProfiles,
+} from "@nessie/adapter-gemini-compatible";
+import {
   execute as httpWebhookExecute,
   testEnvironment as httpWebhookTestEnvironment,
   sessionCodec as httpWebhookSessionCodec,
@@ -171,6 +183,22 @@ const openRouterCompatibleAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openRouterCompatibleAgentConfigurationDoc,
 };
 
+const geminiCompatibleAdapter: ServerAdapterModule = {
+  type: "gemini_compatible",
+  execute: geminiCompatibleExecute,
+  testEnvironment: geminiCompatibleTestEnvironment,
+  sessionCodec: geminiCompatibleSessionCodec,
+  sessionManagement: getAdapterSessionManagement("gemini_compatible") ?? undefined,
+  models: geminiCompatibleModels,
+  modelProfiles: geminiCompatibleModelProfiles,
+  listModels: listGeminiModels,
+  refreshModels: refreshGeminiModels,
+  supportsLocalAgentJwt: false,
+  supportsInstructionsBundle: false,
+  requiresMaterializedRuntimeSkills: false,
+  agentConfigurationDoc: geminiCompatibleAgentConfigurationDoc,
+};
+
 const httpWebhookAdapter: ServerAdapterModule = {
   type: "http_webhook",
   execute: httpWebhookExecute,
@@ -205,6 +233,7 @@ function registerBuiltInAdapters() {
     codexLocalAdapter,
     openAiCompatibleAdapter,
     openRouterCompatibleAdapter,
+    geminiCompatibleAdapter,
     httpWebhookAdapter,
     processAdapter,
     httpAdapter,

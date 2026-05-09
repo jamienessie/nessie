@@ -181,6 +181,19 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  packages/adapters/gemini-compatible:
+    dependencies:
+      '@nessie/adapter-utils':
+        specifier: workspace:*
+        version: link:../../adapter-utils
+    devDependencies:
+      '@types/node':
+        specifier: ^24.6.0
+        version: 24.12.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/adapters/gemini-local:
     dependencies:
       '@nessie/adapter-utils':
@@ -591,6 +604,9 @@ importers:
       '@nessie/adapter-cursor-local':
         specifier: workspace:*
         version: link:../packages/adapters/cursor-local
+      '@nessie/adapter-gemini-compatible':
+        specifier: workspace:*
+        version: link:../packages/adapters/gemini-compatible
       '@nessie/adapter-gemini-local':
         specifier: workspace:*
         version: link:../packages/adapters/gemini-local

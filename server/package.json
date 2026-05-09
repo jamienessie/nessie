@@ -53,6 +53,7 @@
     "@nessie/adapter-gemini-local": "workspace:*",
     "@nessie/adapter-openclaw-gateway": "workspace:*",
     "@nessie/adapter-openrouter-compatible": "workspace:*",
+    "@nessie/adapter-gemini-compatible": "workspace:*",
     "@nessie/adapter-opencode-local": "workspace:*",
     "@nessie/adapter-pi-local": "workspace:*",
     "@nessie/adapter-utils": "workspace:*",
