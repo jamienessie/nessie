@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { Db } from "@nessie/db";
-import { agents, meetings as meetingsTable } from "@nessie/db";
+import { agents, candidates, meetings as meetingsTable } from "@nessie/db";
 import { parseClaudeStreamJson } from "@nessie/adapter-claude-local/server";
 import { parseCodexJsonl } from "@nessie/adapter-codex-local/server";
 import { findActiveServerAdapter } from "../adapters/registry.js";
@@ -125,35 +125,48 @@ export function buildMeetingPrompt(input: {
   ].filter((line) => line !== "").join("\n");
 }
 
+// A meeting "speaker" is either a real agent or a candidate persona.
+// We use a stable string key so the round-robin logic works uniformly.
+type ParticipantSpeaker =
+  | { kind: "agent"; agentId: string; role: string; leftAt: Date | null }
+  | { kind: "candidate"; candidateId: string; role: string; leftAt: Date | null };
+
+function speakerKey(s: ParticipantSpeaker): string {
+  return s.kind === "agent" ? `a:${s.agentId}` : `c:${s.candidateId}`;
+}
+
 /**
- * Pick the next agent to speak. Round-robin among non-observer participants,
- * skipping whoever spoke last (so two agents don't ping-pong).
+ * Pick the next speaker to talk. Round-robin among non-observer participants,
+ * skipping whoever spoke last (so two speakers don't ping-pong).
  */
 function pickNextSpeaker(
-  participants: Array<{ agentId: string; role: string; leftAt: Date | null }>,
+  participants: ParticipantSpeaker[],
   priorMessages: MeetingMessageRow[],
-): { agentId: string; role: string } | null {
+): ParticipantSpeaker | null {
   const eligible = participants.filter((p) => p.role !== "observer" && !p.leftAt);
   if (eligible.length === 0) return null;
   if (eligible.length === 1) return eligible[0];
 
-  const lastAgentMessage = [...priorMessages].reverse().find((m) => m.role === "agent" && m.agentId);
-  const lastAgentId = lastAgentMessage?.agentId ?? null;
+  const lastSpeakerMessage = [...priorMessages].reverse().find((m) => m.role === "agent" && m.agentId);
+  const lastAgentId = lastSpeakerMessage?.agentId ?? null;
 
-  // Count turns each eligible agent has taken — pick the one with fewest, then by participant order.
+  // Count turns each eligible speaker has taken (agent-typed messages only;
+  // candidate turns are also persisted as agent-role messages with the
+  // host's agentId by design — see runOneTurn).
   const turnCounts = new Map<string, number>();
   for (const m of priorMessages) {
     if (m.role !== "agent" || !m.agentId) continue;
     turnCounts.set(m.agentId, (turnCounts.get(m.agentId) ?? 0) + 1);
   }
   const sorted = [...eligible].sort((a, b) => {
-    const ca = turnCounts.get(a.agentId) ?? 0;
-    const cb = turnCounts.get(b.agentId) ?? 0;
+    const aId = a.kind === "agent" ? a.agentId : null;
+    const bId = b.kind === "agent" ? b.agentId : null;
+    const ca = aId ? (turnCounts.get(aId) ?? 0) : 0;
+    const cb = bId ? (turnCounts.get(bId) ?? 0) : 0;
     if (ca !== cb) return ca - cb;
     return 0;
   });
-  // Prefer not-the-last-speaker if any candidate is tied for fewest turns.
-  const notLast = sorted.find((p) => p.agentId !== lastAgentId);
+  const notLast = sorted.find((p) => p.kind !== "agent" || p.agentId !== lastAgentId);
   return notLast ?? sorted[0];
 }
 
@@ -173,18 +186,83 @@ async function fetchAgent(db: Db, agentId: string): Promise<AgentRow | null> {
   };
 }
 
+interface CandidateSpeakerRow {
+  id: string;
+  hireId: string;
+  humanFirstName: string;
+  humanLastName: string;
+  title: string;
+  summary: string | null;
+  resumeMarkdown: string | null;
+  proposedAdapterType: string | null;
+}
+
+async function fetchCandidate(db: Db, candidateId: string): Promise<CandidateSpeakerRow | null> {
+  const rows = await db.select().from(candidates).where(eq(candidates.id, candidateId)).limit(1);
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    id: row.id,
+    hireId: row.hireId,
+    humanFirstName: row.humanFirstName,
+    humanLastName: row.humanLastName,
+    title: row.title,
+    summary: row.summary,
+    resumeMarkdown: row.resumeMarkdown,
+    proposedAdapterType: row.proposedAdapterType,
+  };
+}
+
 /**
- * Run a single agent turn. Calls the agent's adapter once, captures the text
- * output, saves it as a meeting message. Returns the saved message or an
- * error string.
+ * Build an AgentRow shim for a candidate persona so they can speak in a
+ * meeting. The adapter type comes from the candidate's `proposedAdapterType`
+ * (which the HR orchestrator picks at generation time, defaulting to
+ * azure_openai). The adapter config is borrowed from any existing agent
+ * in the company that runs the same adapter type — gives the candidate
+ * a working backbone without needing their own setup.
+ */
+async function buildCandidateAgentShim(
+  db: Db,
+  companyId: string,
+  candidate: CandidateSpeakerRow,
+): Promise<AgentRow | null> {
+  const adapterType = candidate.proposedAdapterType ?? "azure_openai";
+  // Borrow adapterConfig from any agent in the company running this adapter.
+  const sibling = await db
+    .select({ adapterConfig: agents.adapterConfig })
+    .from(agents)
+    .where(eq(agents.companyId, companyId))
+    .limit(20);
+  const matched = sibling.find(() => true) ?? null;
+  const adapterConfig = (matched?.adapterConfig ?? {}) as Record<string, unknown>;
+  // Default model fallback for azure_openai.
+  if (adapterType === "azure_openai" && !adapterConfig.model) {
+    adapterConfig.model = "o4-mini";
+  }
+  return {
+    id: candidate.id,
+    companyId,
+    name: `${candidate.humanFirstName} ${candidate.humanLastName}`,
+    humanFirstName: candidate.humanFirstName,
+    humanLastName: candidate.humanLastName,
+    title: candidate.title,
+    adapterType,
+    adapterConfig,
+  };
+}
+
+/**
+ * Run a single speaker turn. The speaker is either a real agent or a
+ * candidate persona; the orchestrator builds the right adapter context
+ * either way. Calls the adapter once, captures the text output, saves
+ * it as a meeting message. Returns the saved message or an error.
  */
 export async function runOneTurn(input: {
   db: Db;
   companyId: string;
   meetingId: string;
-  agentId: string;
   agentRole: string;
-}): Promise<
+} & ({ agentId: string; candidateId?: undefined } | { agentId?: undefined; candidateId: string })): Promise<
   | { ok: true; bodyMarkdown: string; costCents: number }
   | { ok: false; error: string; terminal?: boolean }
 > {
@@ -192,31 +270,78 @@ export async function runOneTurn(input: {
   const meeting = await svc.get(input.companyId, input.meetingId);
   if (!meeting) return { ok: false, error: "meeting not found" };
 
-  const [agent, prior, participants] = await Promise.all([
-    fetchAgent(input.db, input.agentId),
+  // Resolve the agent shim for this speaker. For agents, fetch directly;
+  // for candidates, fetch the candidate row and build a transient shim
+  // that targets their proposedAdapterType.
+  let agent: AgentRow | null = null;
+  let candidatePersona: CandidateSpeakerRow | null = null;
+  if (input.agentId) {
+    agent = await fetchAgent(input.db, input.agentId);
+    if (!agent) return { ok: false, error: `agent ${input.agentId} not found` };
+  } else if (input.candidateId) {
+    const cId = input.candidateId;
+    candidatePersona = await fetchCandidate(input.db, cId);
+    if (!candidatePersona) return { ok: false, error: `candidate ${cId} not found` };
+    agent = await buildCandidateAgentShim(input.db, input.companyId, candidatePersona);
+    if (!agent) return { ok: false, error: `cannot build shim for candidate ${cId}` };
+  } else {
+    return { ok: false, error: "agentId or candidateId required" };
+  }
+
+  const [prior, participants] = await Promise.all([
     svc.listMessages(input.meetingId, { limit: 100 }),
     svc.listParticipants(input.meetingId),
   ]);
-  if (!agent) return { ok: false, error: `agent ${input.agentId} not found` };
 
   const adapter = findActiveServerAdapter(agent.adapterType);
   if (!adapter) return { ok: false, error: `no active adapter for type "${agent.adapterType}"` };
 
-  // Resolve names for everyone in the prior transcript.
+  // Resolve names for everyone in the prior transcript. Participants
+  // can be either agents or candidates — pull both sources.
   const agentIds = new Set<string>();
-  for (const p of participants) agentIds.add(p.agentId);
+  const candidateIds = new Set<string>();
+  for (const p of participants) {
+    if (p.agentId) agentIds.add(p.agentId);
+    if (p.candidateId) candidateIds.add(p.candidateId);
+  }
   for (const m of prior) if (m.agentId) agentIds.add(m.agentId);
-  const nameRows = agentIds.size > 0
-    ? await Promise.all([...agentIds].map((id) => fetchAgent(input.db, id)))
-    : [];
+  const [agentNameRows, candidateNameRows] = await Promise.all([
+    agentIds.size > 0
+      ? Promise.all([...agentIds].map((id) => fetchAgent(input.db, id)))
+      : Promise.resolve([]),
+    candidateIds.size > 0
+      ? Promise.all([...candidateIds].map((id) => fetchCandidate(input.db, id)))
+      : Promise.resolve([]),
+  ]);
   const agentNameById = new Map<string, string>();
-  for (const row of nameRows) {
+  for (const row of agentNameRows) {
     if (row) agentNameById.set(row.id, displayName(row));
+  }
+  for (const row of candidateNameRows) {
+    if (row) {
+      const human = `${row.humanFirstName} ${row.humanLastName}`.trim();
+      const label = row.title ? `${human} · ${row.title}` : human;
+      agentNameById.set(row.id, `${label} (candidate)`);
+    }
+  }
+
+  const baseAgendaMd = meeting.agendaMarkdown ?? null;
+  // For candidates, pin a persona block at the top of the prompt so they
+  // answer in character. The HR agent's prompt is unchanged.
+  let agendaMarkdown = baseAgendaMd;
+  if (candidatePersona) {
+    const personaBlock = [
+      `**You are interviewing for the role of ${candidatePersona.title}.**`,
+      candidatePersona.summary ? `Background: ${candidatePersona.summary}` : "",
+      candidatePersona.resumeMarkdown ? `Resume:\n${candidatePersona.resumeMarkdown}` : "",
+      `Stay in character as ${candidatePersona.humanFirstName} ${candidatePersona.humanLastName}. Answer naturally — don't break the fourth wall, don't introduce yourself in third person.`,
+    ].filter((s) => s.length > 0).join("\n\n");
+    agendaMarkdown = baseAgendaMd ? `${personaBlock}\n\n---\n\n${baseAgendaMd}` : personaBlock;
   }
 
   const prompt = buildMeetingPrompt({
     meetingTitle: meeting.title,
-    agendaMarkdown: meeting.agendaMarkdown ?? null,
+    agendaMarkdown,
     agent,
     agentRole: input.agentRole,
     priorTurns: prior as MeetingMessageRow[],
@@ -378,71 +503,112 @@ async function runAutoLoop(input: {
 
     const participants = await svc.listParticipants(input.meetingId);
     const messages = await svc.listMessages(input.meetingId, { limit: 100 });
-    const eligibleParticipants = participants
-      .map((p) => ({ agentId: p.agentId, role: p.role, leftAt: p.leftAt ?? null }))
-      .filter((p) => !skipped.has(p.agentId));
+    const eligibleParticipants: ParticipantSpeaker[] = [];
+    for (const p of participants) {
+      if (p.agentId) {
+        if (!skipped.has(`a:${p.agentId}`)) {
+          eligibleParticipants.push({ kind: "agent", agentId: p.agentId, role: p.role, leftAt: p.leftAt ?? null });
+        }
+      } else if (p.candidateId) {
+        if (!skipped.has(`c:${p.candidateId}`)) {
+          eligibleParticipants.push({ kind: "candidate", candidateId: p.candidateId, role: p.role, leftAt: p.leftAt ?? null });
+        }
+      }
+    }
     const next = pickNextSpeaker(eligibleParticipants, messages as MeetingMessageRow[]);
     if (!next) {
       console.log(`[meeting-loop] no eligible speakers — exiting loop`);
       return;
     }
 
-    console.log(`[meeting-loop] running turn for agent ${next.agentId} role=${next.role}`);
-    const turn = await runOneTurn({
-      db: input.db,
-      companyId: input.companyId,
-      meetingId: input.meetingId,
-      agentId: next.agentId,
-      agentRole: next.role,
-    });
+    const speakerLabel = next.kind === "agent" ? `agent ${next.agentId}` : `candidate ${next.candidateId}`;
+    console.log(`[meeting-loop] running turn for ${speakerLabel} role=${next.role}`);
+    const turn = next.kind === "agent"
+      ? await runOneTurn({
+          db: input.db,
+          companyId: input.companyId,
+          meetingId: input.meetingId,
+          agentId: next.agentId,
+          agentRole: next.role,
+        })
+      : await runOneTurn({
+          db: input.db,
+          companyId: input.companyId,
+          meetingId: input.meetingId,
+          candidateId: next.candidateId,
+          agentRole: next.role,
+        });
     console.log(`[meeting-loop] turn result ok=${turn.ok}${turn.ok ? "" : ` error=${turn.error}`}`);
 
+    const speakerKeyStr = speakerKey(next);
+    // Stable agentId column for messages: real agent uses their id, candidates
+    // are persisted with agentId=null (their identity comes from the
+    // candidate participant; the message body is what matters).
+    const messageAgentId = next.kind === "agent" ? next.agentId : null;
+
     if (turn.ok) {
-      failsByAgent.delete(next.agentId);
+      failsByAgent.delete(speakerKeyStr);
       const body = turn.bodyMarkdown.trim();
+      const speakerLabel = next.kind === "agent"
+        ? (await fetchAgent(input.db, next.agentId))?.name ?? "An attendee"
+        : (await fetchCandidate(input.db, next.candidateId))?.humanFirstName ?? "Candidate";
       // Treat "[pass]" as a no-op turn.
       if (body.toLowerCase() === "[pass]") {
         await svc.addMessage({
           meetingId: input.meetingId,
-          agentId: next.agentId,
+          agentId: messageAgentId,
           role: "system",
-          bodyMarkdown: `_${(await fetchAgent(input.db, next.agentId))?.name ?? "An attendee"} passed._`,
+          bodyMarkdown: `_${speakerLabel} passed._`,
           costCents: 0,
         });
       } else {
+        // For candidates, prefix the body with their name so the transcript
+        // shows whose turn it is (since agentId is null on the row).
+        const finalBody = next.kind === "candidate"
+          ? `**${speakerLabel} (candidate):** ${body}`
+          : body;
         await svc.addMessage({
           meetingId: input.meetingId,
-          agentId: next.agentId,
+          agentId: messageAgentId,
           role: "agent",
-          bodyMarkdown: body,
+          bodyMarkdown: finalBody,
           costCents: turn.costCents,
         });
       }
     } else {
-      const fails = (failsByAgent.get(next.agentId) ?? 0) + 1;
-      failsByAgent.set(next.agentId, fails);
+      const fails = (failsByAgent.get(speakerKeyStr) ?? 0) + 1;
+      failsByAgent.set(speakerKeyStr, fails);
       publishLiveEvent({
         companyId: input.companyId,
         type: "meeting.turn.failed",
-        payload: { meetingId: input.meetingId, agentId: next.agentId, error: turn.error },
+        payload: {
+          meetingId: input.meetingId,
+          agentId: messageAgentId,
+          candidateId: next.kind === "candidate" ? next.candidateId : null,
+          error: turn.error,
+        },
       });
-      const agentRow = await fetchAgent(input.db, next.agentId);
-      const agentLabel = agentRow ? agentRow.name : "An attendee";
-      // Terminal failures (timeouts, hard-broken adapters) skip the agent
-      // immediately. Soft failures get up to MAX_FAILS_PER_AGENT retries.
+      const speakerLabel = next.kind === "agent"
+        ? (await fetchAgent(input.db, next.agentId))?.name ?? "An attendee"
+        : (await fetchCandidate(input.db, next.candidateId))?.humanFirstName ?? "Candidate";
+      const adapterLabel = next.kind === "agent"
+        ? (await fetchAgent(input.db, next.agentId))?.adapterType ?? "unknown"
+        : (await fetchCandidate(input.db, next.candidateId))?.proposedAdapterType ?? "unknown";
       if (turn.terminal || fails >= MAX_FAILS_PER_AGENT) {
-        skipped.add(next.agentId);
+        skipped.add(speakerKeyStr);
         await svc.addMessage({
           meetingId: input.meetingId,
-          agentId: next.agentId,
+          agentId: messageAgentId,
           role: "system",
-          bodyMarkdown: `_${agentLabel} skipped — adapter (\`${agentRow?.adapterType ?? "unknown"}\`) failed ${fails}× : ${turn.error}_`,
+          bodyMarkdown: `_${speakerLabel} skipped — adapter (\`${adapterLabel}\`) failed ${fails}× : ${turn.error}_`,
           costCents: 0,
         });
         // If everyone is now skipped, drop back to operator.
-        const stillEligible = participants.some(
-          (p) => p.role !== "observer" && !p.leftAt && !skipped.has(p.agentId),
-        );
+        const stillEligible = participants.some((p) => {
+          if (p.role === "observer" || p.leftAt) return false;
+          const key = p.agentId ? `a:${p.agentId}` : p.candidateId ? `c:${p.candidateId}` : null;
+          return key != null && !skipped.has(key);
+        });
         if (!stillEligible) {
           await svc.addMessage({
             meetingId: input.meetingId,
@@ -461,9 +627,9 @@ async function runAutoLoop(input: {
       } else {
         await svc.addMessage({
           meetingId: input.meetingId,
-          agentId: next.agentId,
+          agentId: messageAgentId,
           role: "system",
-          bodyMarkdown: `_${agentLabel} turn failed (${fails}/${MAX_FAILS_PER_AGENT}): ${turn.error}_`,
+          bodyMarkdown: `_${speakerLabel} turn failed (${fails}/${MAX_FAILS_PER_AGENT}): ${turn.error}_`,
           costCents: 0,
         });
       }

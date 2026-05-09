@@ -29,6 +29,7 @@ import { Activity } from "./pages/Activity";
 import { Inbox } from "./pages/Inbox";
 import { Departments } from "./pages/Departments";
 import { Hiring } from "./pages/Hiring";
+import { HireDetail } from "./pages/hiring/HireDetail";
 import { Meetings } from "./pages/Meetings";
 import { MeetingRoom } from "./pages/MeetingRoom";
 import { TrustLayer } from "./pages/TrustLayer";
@@ -131,6 +132,7 @@ function boardRoutes() {
       <Route path="activity" element={<Activity />} />
       <Route path="departments" element={<Departments />} />
       <Route path="hiring" element={<Hiring />} />
+      <Route path="hiring/:hireId" element={<HireDetail />} />
       <Route path="meetings" element={<Meetings />} />
       <Route path="meetings/:meetingId/room" element={<MeetingRoom />} />
       <Route path="trust-layer" element={<TrustLayer />} />
@@ -330,6 +332,7 @@ export function App() {
           <Route path="chief-of-staff" element={<UnprefixedBoardRedirect />} />
           <Route path="briefs" element={<UnprefixedBoardRedirect />} />
           <Route path="hiring" element={<UnprefixedBoardRedirect />} />
+          <Route path="hiring/:hireId" element={<UnprefixedBoardRedirect />} />
           <Route path="trust-layer" element={<UnprefixedBoardRedirect />} />
           <Route path="dashboard" element={<UnprefixedBoardRedirect />} />
           <Route path="dashboard/live" element={<UnprefixedBoardRedirect />} />

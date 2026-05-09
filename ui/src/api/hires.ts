@@ -137,4 +137,44 @@ export const hiresApi = {
     `/candidates/${candidateId}/hire${qs(companyId)}`,
     body,
   ),
+  /**
+   * Ask Lena Park to generate `count` more candidate personas via LLM.
+   * The first 3 are auto-generated when the operator advances the hire
+   * to `sourcing`; this endpoint exists so the operator can ask for
+   * more after seeing the initial pool.
+   */
+  generateCandidates: (companyId: string, hireId: string, count = 3) =>
+    api.post<{ candidates: Candidate[] }>(
+      `/hires/${hireId}/generate-candidates${qs(companyId)}`,
+      { count },
+    ),
+  /**
+   * Spawn an interview meeting for a candidate. Returns the new
+   * meeting id; the UI navigates to /meetings/:id/room.
+   */
+  startInterview: (
+    companyId: string,
+    hireId: string,
+    candidateId: string,
+    panelAgentIds: string[] = [],
+  ) =>
+    api.post<{ meetingId: string }>(
+      `/hires/${hireId}/candidates/${candidateId}/start-interview${qs(companyId)}`,
+      { panelAgentIds },
+    ),
+  /**
+   * After an interview wraps, ask Lena to score it from the transcript.
+   * Posts a `scorecards` row server-side; the operator advances the
+   * candidate based on the recommendation.
+   */
+  synthesizeScorecard: (
+    companyId: string,
+    hireId: string,
+    candidateId: string,
+    meetingId: string,
+  ) =>
+    api.post<{ scorecard: Scorecard }>(
+      `/hires/${hireId}/candidates/${candidateId}/synthesize-scorecard${qs(companyId)}`,
+      { meetingId },
+    ),
 };

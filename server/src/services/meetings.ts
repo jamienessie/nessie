@@ -177,11 +177,39 @@ export class MeetingsService {
       .orderBy(asc(meetingParticipants.joinedAt));
   }
 
-  async addParticipant(meetingId: string, agentId: string, role: string = "panel") {
+  /**
+   * Add a participant to a meeting. Speaker is either an existing agent
+   * or a hiring-pipeline candidate persona — exactly one of `agentId`
+   * and `candidateId` must be set (DB CHECK constraint enforces this).
+   */
+  async addParticipant(
+    meetingId: string,
+    speaker: { agentId: string; candidateId?: undefined } | { agentId?: undefined; candidateId: string },
+    role: string = "panel",
+  ) {
+    if (speaker.agentId) {
+      const [created] = await this.db
+        .insert(meetingParticipants)
+        .values({ meetingId, agentId: speaker.agentId, role })
+        .onConflictDoNothing({ target: [meetingParticipants.meetingId, meetingParticipants.agentId] })
+        .returning();
+      if (created) {
+        const meeting = await this.getById(meetingId);
+        if (meeting) {
+          publishLiveEvent({
+            companyId: meeting.companyId,
+            type: "meeting.participant.added",
+            payload: { meetingId, participant: created },
+          });
+        }
+      }
+      return created ?? null;
+    }
+    // candidate path — uses the partial unique on (meetingId, candidateId).
     const [created] = await this.db
       .insert(meetingParticipants)
-      .values({ meetingId, agentId, role })
-      .onConflictDoNothing({ target: [meetingParticipants.meetingId, meetingParticipants.agentId] })
+      .values({ meetingId, candidateId: speaker.candidateId, role })
+      .onConflictDoNothing({ target: [meetingParticipants.meetingId, meetingParticipants.candidateId] })
       .returning();
     if (created) {
       const meeting = await this.getById(meetingId);

@@ -24,6 +24,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ChiefDashboardPane } from "./chief-of-staff/ChiefDashboardPane";
+import { ChiefResponseCard } from "./chief-of-staff/ChiefResponseCard";
+import { HireCard } from "./hiring/HireCard";
+import { HiringStageColumn } from "./hiring/HiringStageColumn";
+import { CandidateCard } from "./hiring/CandidateCard";
+import { PersonaCard } from "./hiring/PersonaCard";
+import { ScorecardView } from "./hiring/ScorecardView";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1442,6 +1449,333 @@ export function DesignGuide() {
             );
           })}
         </div>
+      </Section>
+
+      {/* ============================================================ */}
+      {/*  CHIEF OF STAFF                                               */}
+      {/* ============================================================ */}
+      <Section title="Chief of Staff">
+        <p className="text-sm text-muted-foreground mb-4">
+          Two-pane layout: always-on dashboard on the left, ask/answer transcript on the right.
+          Powers the <code className="text-xs bg-muted px-1 rounded">/chief-of-staff</code> page.
+          Backend service builds structured sections by intent; an LLM rewrites the summary
+          paragraph (fail-open).
+        </p>
+        <SubSection title="ChiefDashboardPane">
+          <p className="text-xs text-muted-foreground mb-3">
+            Always-on metrics, today's meetings, recent activity. Auto-refetches every 30s.
+            Pass <code className="text-xs bg-muted px-1 rounded">mock</code> to render with sample data.
+          </p>
+          <div className="border border-border rounded-md h-[480px] overflow-hidden">
+            <ChiefDashboardPane
+              companyId="__mock__"
+              mock={{
+                counts: {
+                  blockedIssues: 3,
+                  pendingApprovals: 5,
+                  liveAgents: 2,
+                  weekSpendCents: 1842,
+                  openContracts: 7,
+                  lowRepAgents: 1,
+                  todaysMeetingsCount: 2,
+                },
+                meetings: [],
+                agents: [],
+              }}
+            />
+          </div>
+        </SubSection>
+
+        <SubSection title="ChiefResponseCard — agents intent">
+          <ChiefResponseCard
+            response={{
+              intent: "which_agents_are_struggling",
+              summary:
+                "Phoebe Walker (CEO) and Sam Green (CTO) are running near reputation 32 — both saw failed turns this week. Sofia Reyes is healthy at 58.",
+              sections: [
+                {
+                  heading: "Lowest reputation first",
+                  kind: "agents",
+                  rows: [
+                    { id: "agent-phoebe", name: "Phoebe Walker", title: "CEO", reputationScore: 32, status: "idle", tier: "T1" },
+                    { id: "agent-sam", name: "Sam Green", title: "CTO", reputationScore: 35, status: "idle", tier: "T1" },
+                    { id: "agent-sofia", name: "Sofia Reyes", title: "Engineering Lead", reputationScore: 58, status: "running", tier: "T2" },
+                  ],
+                },
+              ],
+            }}
+          />
+        </SubSection>
+
+        <SubSection title="ChiefResponseCard — issues intent">
+          <ChiefResponseCard
+            response={{
+              intent: "what_is_blocked",
+              summary:
+                "3 blocked issues, all critical or high priority — RAI-12 has been waiting 2 days on a deploy approval.",
+              sections: [
+                {
+                  heading: "Blocked issues",
+                  kind: "issues",
+                  rows: [
+                    { id: "issue-1", identifier: "RAI-12", title: "Roll out adapter telemetry", status: "blocked", priority: "critical" },
+                    { id: "issue-2", identifier: "RAI-15", title: "Migrate cost-event indexes", status: "blocked", priority: "high" },
+                    { id: "issue-3", identifier: "RAI-19", title: "Sandbox bypass review", status: "blocked", priority: "medium" },
+                  ],
+                },
+              ],
+            }}
+          />
+        </SubSection>
+
+        <SubSection title="ChiefResponseCard — meetings intent">
+          <ChiefResponseCard
+            response={{
+              intent: "what_is_happening",
+              summary: "1 live meeting, 1 awaiting your decision.",
+              sections: [
+                {
+                  heading: "Live meetings",
+                  kind: "meetings",
+                  rows: [
+                    { id: "meet-1", title: "Q3 Engineering Review", state: "active" },
+                    { id: "meet-2", title: "Hiring Panel — Eng Lead", state: "waiting_for_operator" },
+                  ],
+                },
+              ],
+            }}
+          />
+        </SubSection>
+
+        <SubSection title="ChiefResponseCard — costs intent">
+          <ChiefResponseCard
+            response={{
+              intent: "what_is_wasting_money",
+              summary: "$18.42 over 7 days — 84% on Azure OpenAI metered API.",
+              sections: [
+                {
+                  heading: "Spend by provider · billing type (7d)",
+                  kind: "costs",
+                  rows: [
+                    { provider: "azure_openai", billingType: "metered_api", cents: 1547 },
+                    { provider: "openrouter", billingType: "metered_api", cents: 218 },
+                    { provider: "anthropic", billingType: "subscription", cents: 77 },
+                  ],
+                },
+              ],
+            }}
+          />
+        </SubSection>
+
+        <SubSection title="ChiefResponseCard — approvals + hires + inbox">
+          <ChiefResponseCard
+            response={{
+              intent: "what_needs_approval",
+              summary: "2 approval requests on the bus, 1 hire ready to mint.",
+              sections: [
+                {
+                  heading: "Approval requests on the bus",
+                  kind: "approvals",
+                  rows: [
+                    { id: "bus-1", kind: "operator_approval_request", payload: { summary: "Sofia Reyes wants to deploy o4-mini config changes" } },
+                    { id: "bus-2", kind: "operator_approval_request", payload: { summary: "Phoebe Walker requests sandbox bypass for migration" } },
+                  ],
+                },
+                {
+                  heading: "Hires ready to mint",
+                  kind: "hires",
+                  rows: [
+                    { id: "hire-1", title: "Senior Designer · Aria K.", status: "recommended" },
+                  ],
+                },
+                {
+                  heading: "Inbox awaiting triage",
+                  kind: "inbox",
+                  rows: [
+                    { id: "inbox-1", kind: "note", bodyMarkdown: "Operator wants weekly cost summary in dashboard" },
+                  ],
+                },
+              ],
+            }}
+          />
+        </SubSection>
+      </Section>
+
+      {/* ============================================================ */}
+      {/*  HIRING                                                       */}
+      {/* ============================================================ */}
+      <Section title="Hiring">
+        <p className="text-sm text-muted-foreground mb-4">
+          Kanban-style HR pipeline. Lena Park (Head of HR) auto-generates candidate
+          personas from a job brief, runs interviews via the meeting room, and drafts
+          scorecards from the transcripts. Operator approves at every stage gate.
+        </p>
+
+        <SubSection title="HireCard">
+          <p className="text-xs text-muted-foreground mb-3">
+            One card per open hire in the kanban. Whole card links to{" "}
+            <code className="text-xs bg-muted px-1 rounded">/hiring/:hireId</code>.
+          </p>
+          <div className="grid grid-cols-2 gap-3 max-w-xl">
+            <HireCard
+              candidateCount={3}
+              hire={{
+                id: "h1",
+                companyId: "c",
+                title: "Senior backend engineer",
+                description: "Postgres + Drizzle migrations, low-ego, opinionated about correctness.",
+                status: "sourcing",
+                requestedTier: "T1",
+                requestedRoleTemplateKey: "eng.lead",
+                requestedDepartmentId: null,
+                packet: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }}
+            />
+            <HireCard
+              candidateCount={1}
+              hire={{
+                id: "h2",
+                companyId: "c",
+                title: "QA engineer (test infra)",
+                description: null,
+                status: "interviewing",
+                requestedTier: "T3",
+                requestedRoleTemplateKey: null,
+                requestedDepartmentId: null,
+                packet: null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }}
+            />
+          </div>
+        </SubSection>
+
+        <SubSection title="HiringStageColumn">
+          <p className="text-xs text-muted-foreground mb-3">
+            Container for HireCards. Coloured header per stage, count badge.
+          </p>
+          <div className="grid grid-cols-3 gap-3 max-w-3xl h-64">
+            <HiringStageColumn state="open" count={1}>
+              <p className="text-[11px] text-muted-foreground italic px-1 py-2">No open hires.</p>
+            </HiringStageColumn>
+            <HiringStageColumn state="sourcing" count={2}>
+              <p className="text-[11px] text-muted-foreground italic px-1 py-2">2 hires.</p>
+            </HiringStageColumn>
+            <HiringStageColumn state="interviewing" count={0}>
+              <p className="text-[11px] text-muted-foreground italic px-1 py-2">Empty.</p>
+            </HiringStageColumn>
+          </div>
+        </SubSection>
+
+        <SubSection title="CandidateCard">
+          <p className="text-xs text-muted-foreground mb-3">
+            EntityRow-based row in the candidate roster. Avatar bubble uses agent palette,
+            trailing shows status badge + scorecard stars helper.
+          </p>
+          <div className="border border-border rounded-md max-w-2xl overflow-hidden">
+            <div className="divide-y divide-border">
+              <CandidateCard
+                candidate={{
+                  id: "cand-1",
+                  hireId: "h1",
+                  humanFirstName: "Yuki",
+                  humanLastName: "Tanaka",
+                  title: "Backend Engineer",
+                  status: "interviewing",
+                  summary: "10 years Postgres, ex-Stripe payments infra. Opinionated about migrations.",
+                  resumeMarkdown: null,
+                  sourceTemplateKey: null,
+                  proposedAdapterType: "azure_openai",
+                  createdAt: new Date().toISOString(),
+                }}
+                scorecards={[]}
+              />
+              <CandidateCard
+                candidate={{
+                  id: "cand-2",
+                  hireId: "h1",
+                  humanFirstName: "Naomi",
+                  humanLastName: "Okafor",
+                  title: "Backend Engineer",
+                  status: "proposed",
+                  summary: "Recovery + observability specialist. Quiet but lethal.",
+                  resumeMarkdown: null,
+                  sourceTemplateKey: null,
+                  proposedAdapterType: "azure_openai",
+                  createdAt: new Date().toISOString(),
+                }}
+                scorecards={[
+                  {
+                    id: "sc-1",
+                    candidateId: "cand-2",
+                    pass: "interview",
+                    rubric: [
+                      { criterion: "Communication", weight: 0.25, score: 4 },
+                      { criterion: "Domain expertise", weight: 0.30, score: 4.5 },
+                      { criterion: "Independent judgement", weight: 0.25, score: 4 },
+                      { criterion: "Cultural fit", weight: 0.20, score: 4 },
+                    ],
+                    recommendation: "hire",
+                    notes: null,
+                    createdAt: new Date().toISOString(),
+                  },
+                ]}
+              />
+            </div>
+          </div>
+        </SubSection>
+
+        <SubSection title="PersonaCard">
+          <p className="text-xs text-muted-foreground mb-3">
+            Top of the right pane on /hiring/:hireId — full persona view with
+            avatar, title, summary, resume markdown.
+          </p>
+          <PersonaCard
+            className="max-w-2xl"
+            candidate={{
+              id: "cand-pers",
+              hireId: "h1",
+              humanFirstName: "Yuki",
+              humanLastName: "Tanaka",
+              title: "Senior Backend Engineer",
+              status: "interviewing",
+              summary:
+                "10 years Postgres, ex-Stripe payments infra. Opinionated about migrations and gradual rollouts. Doesn't pad answers.",
+              resumeMarkdown:
+                "**Past roles**\n- Stripe — Payments infra (4y)\n- Datadog — Observability backend (3y)\n\n**Strengths**\n- Migration patterns under load\n- Postgres internals\n\n**Edge**\n- Will push back on YAML configs.",
+              sourceTemplateKey: "eng.lead",
+              proposedAdapterType: "azure_openai",
+              createdAt: new Date().toISOString(),
+            }}
+          />
+        </SubSection>
+
+        <SubSection title="ScorecardView">
+          <p className="text-xs text-muted-foreground mb-3">
+            Rubric scorecard from Lena's interview synthesis. Recommendation pill,
+            per-criterion bars, notes.
+          </p>
+          <ScorecardView
+            className="max-w-2xl"
+            scorecard={{
+              id: "sc-demo",
+              candidateId: "cand-pers",
+              pass: "interview",
+              rubric: [
+                { criterion: "Communication", weight: 0.25, score: 4.0, note: "Clear, direct, no padding." },
+                { criterion: "Domain expertise", weight: 0.30, score: 4.5, note: "Specific Postgres examples; cited migration patterns by name." },
+                { criterion: "Independent judgement", weight: 0.25, score: 3.5, note: "Pushed back on bad assumption — good. Could be more direct earlier." },
+                { criterion: "Cultural fit", weight: 0.20, score: 4.0, note: "Fits the low-ego brief." },
+              ],
+              recommendation: "hire",
+              notes:
+                "Strong technical signal. Communication is direct without being curt. One concern: hesitated on first pushback before getting into it — but recovered well. Recommend advancing to trial.",
+              createdAt: new Date().toISOString(),
+            }}
+          />
+        </SubSection>
       </Section>
 
       {/* ============================================================ */}
