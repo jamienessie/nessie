@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import type { Db } from "@nessie/db";
 import { agents, meetings as meetingsTable } from "@nessie/db";
+import { parseClaudeStreamJson } from "@nessie/adapter-claude-local/server";
+import { parseCodexJsonl } from "@nessie/adapter-codex-local/server";
 import { findActiveServerAdapter } from "../adapters/registry.js";
 import { meetingsService, type MeetingState } from "./meetings.js";
 import { publishLiveEvent } from "./live-events.js";
@@ -43,8 +45,26 @@ interface AgentRow {
 }
 
 const TURN_DELAY_MS = 600;
-const TURN_TIMEOUT_MS = 60_000;
+const TURN_TIMEOUT_MS = 90_000;
 const MAX_PRIOR_TURNS_IN_PROMPT = 30;
+
+// Local-CLI adapters (claude_local, codex_local) stream structured
+// JSONL events on stdout, not plain text. Each one has its own parser
+// in the adapter package; the cloud-API adapters (openai_compatible,
+// azure_openai, openrouter_compatible) just emit the assistant text
+// directly. extractAssistantText routes to the right parser so the
+// meeting transcript shows readable replies, not raw event JSON.
+function extractAssistantText(adapterType: string, stdout: string): string {
+  const trimmed = stdout.trim();
+  if (!trimmed) return "";
+  if (adapterType === "claude_local") {
+    return parseClaudeStreamJson(stdout).summary || trimmed;
+  }
+  if (adapterType === "codex_local") {
+    return parseCodexJsonl(stdout).summary || trimmed;
+  }
+  return trimmed;
+}
 
 function displayName(agent: AgentRow): string {
   const human = `${agent.humanFirstName} ${agent.humanLastName}`.trim();
@@ -236,7 +256,7 @@ export async function runOneTurn(input: {
       const message = result.errorMessage ?? stderr.trim() ?? `adapter exit ${result.exitCode}`;
       return { ok: false, error: message };
     }
-    const bodyMarkdown = stdout.trim();
+    const bodyMarkdown = extractAssistantText(agent.adapterType, stdout);
     if (!bodyMarkdown) return { ok: false, error: "adapter produced empty response" };
     // Cost: prefer cost-per-turn from result if available, else 0.
     const costCents = typeof result.costUsd === "number" ? Math.round(result.costUsd * 100) : 0;
