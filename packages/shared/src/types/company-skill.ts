@@ -95,6 +95,39 @@ export interface CompanySkillImportResult {
   warnings: string[];
 }
 
+export type CompanySkillCatalogSourceId = "skills_directory" | "skene_cookbook" | "prompt_index";
+
+export interface CompanySkillCatalogSource {
+  id: CompanySkillCatalogSourceId;
+  label: string;
+  description: string;
+  homepageUrl: string;
+}
+
+export interface CompanySkillCatalogEntry {
+  sourceId: CompanySkillCatalogSourceId;
+  externalId: string;
+  slug: string | null;
+  name: string;
+  description: string | null;
+  author: string | null;
+  detailUrl: string;
+  importSource: string;
+  repository: string | null;
+  tags: string[];
+  verified: boolean | null;
+}
+
+export interface CompanySkillCatalogSearchResult {
+  source: CompanySkillCatalogSource;
+  query: string;
+  items: CompanySkillCatalogEntry[];
+  total: number | null;
+  limit: number;
+  offset: number;
+  nextOffset: number | null;
+}
+
 export interface CompanySkillProjectScanRequest {
   projectIds?: string[];
   workspaceIds?: string[];

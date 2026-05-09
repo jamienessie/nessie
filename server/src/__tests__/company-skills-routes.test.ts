@@ -13,6 +13,7 @@ const mockAccessService = vi.hoisted(() => ({
 
 const mockCompanySkillService = vi.hoisted(() => ({
   importFromSource: vi.fn(),
+  searchCatalog: vi.fn(),
   deleteSkill: vi.fn(),
 }));
 
@@ -91,6 +92,20 @@ describe("company skill mutation permissions", () => {
     mockCompanySkillService.importFromSource.mockResolvedValue({
       imported: [],
       warnings: [],
+    });
+    mockCompanySkillService.searchCatalog.mockResolvedValue({
+      source: {
+        id: "skills_directory",
+        label: "Skills Directory",
+        description: "Catalog",
+        homepageUrl: "https://www.skillsdirectory.com/skills",
+      },
+      query: "release notes",
+      items: [],
+      total: 0,
+      limit: 12,
+      offset: 0,
+      nextOffset: null,
     });
     mockCompanySkillService.deleteSkill.mockResolvedValue({
       id: "skill-1",

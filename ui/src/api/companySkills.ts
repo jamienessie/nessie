@@ -1,5 +1,7 @@
 import type {
   CompanySkill,
+  CompanySkillCatalogSearchResult,
+  CompanySkillCatalogSourceId,
   CompanySkillCreateRequest,
   CompanySkillDetail,
   CompanySkillFileDetail,
@@ -40,6 +42,16 @@ export const companySkillsApi = {
     api.post<CompanySkillImportResult>(
       `/companies/${encodeURIComponent(companyId)}/skills/import`,
       { source },
+    ),
+  searchCatalog: (
+    companyId: string,
+    sourceId: CompanySkillCatalogSourceId,
+    q: string,
+    limit: number = 12,
+    offset: number = 0,
+  ) =>
+    api.get<CompanySkillCatalogSearchResult>(
+      `/companies/${encodeURIComponent(companyId)}/skills/discovery?sourceId=${encodeURIComponent(sourceId)}&q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`,
     ),
   scanProjects: (companyId: string, payload: CompanySkillProjectScanRequest = {}) =>
     api.post<CompanySkillProjectScanResult>(

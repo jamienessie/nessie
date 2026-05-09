@@ -21,6 +21,12 @@ type SkillTelemetryInput = {
   metadata: Record<string, unknown> | null;
 };
 
+const COMPANY_SKILL_CATALOG_SOURCE_IDS = new Set([
+  "skills_directory",
+  "skene_cookbook",
+  "prompt_index",
+]);
+
 export function companySkillRoutes(db: Db) {
   const router = Router();
   const agents = agentService(db);
@@ -226,6 +232,21 @@ export function companySkillRoutes(db: Db) {
       res.status(201).json(result);
     },
   );
+
+  router.get("/companies/:companyId/skills/discovery", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const sourceId = typeof req.query.sourceId === "string" ? req.query.sourceId : "";
+    if (!COMPANY_SKILL_CATALOG_SOURCE_IDS.has(sourceId)) {
+      res.status(400).json({ error: "Invalid catalog source" });
+      return;
+    }
+    const query = typeof req.query.q === "string" ? req.query.q : "";
+    const limit = typeof req.query.limit === "string" ? Number.parseInt(req.query.limit, 10) : 12;
+    const offset = typeof req.query.offset === "string" ? Number.parseInt(req.query.offset, 10) : 0;
+    const result = await svc.searchCatalog(companyId, sourceId as any, query, limit, offset);
+    res.json(result);
+  });
 
   router.post(
     "/companies/:companyId/skills/scan-projects",

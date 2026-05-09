@@ -33,6 +33,18 @@ import {
   modelProfiles as codexModelProfiles,
 } from "@nessie/adapter-codex-local";
 import {
+  execute as openCodeLocalExecute,
+  listOpenCodeSkills,
+  syncOpenCodeSkills,
+  testEnvironment as openCodeLocalTestEnvironment,
+  sessionCodec as openCodeLocalSessionCodec,
+} from "@nessie/adapter-opencode-local/server";
+import {
+  agentConfigurationDoc as openCodeLocalAgentConfigurationDoc,
+  models as openCodeLocalModels,
+  modelProfiles as openCodeLocalModelProfiles,
+} from "@nessie/adapter-opencode-local";
+import {
   execute as openAiCompatibleExecute,
   testEnvironment as openAiCompatibleTestEnvironment,
   sessionCodec as openAiCompatibleSessionCodec,
@@ -42,18 +54,6 @@ import {
   models as openAiCompatibleModels,
   modelProfiles as openAiCompatibleModelProfiles,
 } from "@nessie/adapter-openai-compatible";
-import {
-  execute as azureOpenaiExecute,
-  listAzureOpenaiModels,
-  refreshAzureOpenaiModels,
-  testEnvironment as azureOpenaiTestEnvironment,
-  sessionCodec as azureOpenaiSessionCodec,
-} from "@nessie/adapter-azure-openai/server";
-import {
-  agentConfigurationDoc as azureOpenaiAgentConfigurationDoc,
-  models as azureOpenaiModels,
-  modelProfiles as azureOpenaiModelProfiles,
-} from "@nessie/adapter-azure-openai";
 import {
   execute as openRouterCompatibleExecute,
   listOpenRouterModels,
@@ -78,6 +78,18 @@ import {
   models as geminiCompatibleModels,
   modelProfiles as geminiCompatibleModelProfiles,
 } from "@nessie/adapter-gemini-compatible";
+import {
+  execute as azureOpenaiExecute,
+  listAzureOpenaiModels,
+  refreshAzureOpenaiModels,
+  testEnvironment as azureOpenaiTestEnvironment,
+  sessionCodec as azureOpenaiSessionCodec,
+} from "@nessie/adapter-azure-openai/server";
+import {
+  agentConfigurationDoc as azureOpenaiAgentConfigurationDoc,
+  models as azureOpenaiModels,
+  modelProfiles as azureOpenaiModelProfiles,
+} from "@nessie/adapter-azure-openai";
 import {
   execute as httpWebhookExecute,
   testEnvironment as httpWebhookTestEnvironment,
@@ -163,6 +175,24 @@ const codexLocalAdapter: ServerAdapterModule = {
   getRuntimeCommandSpec: (config) => buildNpmRuntimeCommandSpec(config, "codex", "@openai/codex"),
   agentConfigurationDoc: codexAgentConfigurationDoc,
   getQuotaWindows: codexGetQuotaWindows,
+};
+
+const openCodeLocalAdapter: ServerAdapterModule = {
+  type: "opencode_local",
+  execute: openCodeLocalExecute,
+  testEnvironment: openCodeLocalTestEnvironment,
+  listSkills: listOpenCodeSkills,
+  syncSkills: syncOpenCodeSkills,
+  sessionCodec: openCodeLocalSessionCodec,
+  sessionManagement: getAdapterSessionManagement("opencode_local") ?? undefined,
+  models: openCodeLocalModels,
+  modelProfiles: openCodeLocalModelProfiles,
+  supportsLocalAgentJwt: true,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: false,
+  getRuntimeCommandSpec: (config) => buildNpmRuntimeCommandSpec(config, "opencode", "opencode-ai"),
+  agentConfigurationDoc: openCodeLocalAgentConfigurationDoc,
 };
 
 const openAiCompatibleAdapter: ServerAdapterModule = {
@@ -252,13 +282,14 @@ const builtinFallbacks = new Map<string, ServerAdapterModule>();
 const pausedOverrides = new Set<string>();
 
 function registerBuiltInAdapters() {
-  // Nessie Phase 1 catalog: four builtin agent adapters plus the two
+  // Nessie Phase 1 catalog: five builtin agent adapters plus the two
   // adapter-plugin transports (process / http). Other Paperclip adapters
-  // (cursor / gemini / opencode / acpx / pi / openclaw-gateway / hermes)
+  // (cursor / gemini_local / acpx / pi / openclaw-gateway / hermes)
   // remain on disk as workspace packages but are no longer registered.
   for (const adapter of [
     claudeLocalAdapter,
     codexLocalAdapter,
+    openCodeLocalAdapter,
     openAiCompatibleAdapter,
     openRouterCompatibleAdapter,
     geminiCompatibleAdapter,

@@ -17,17 +17,24 @@ interface OpenRouterAdapterConfig {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  apiKey?: string;
+  env?: Record<string, unknown>;
 }
 
 function readConfig(raw: unknown): OpenRouterAdapterConfig {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
   const obj = raw as Record<string, unknown>;
+  const env = typeof obj.env === "object" && obj.env !== null && !Array.isArray(obj.env)
+    ? (obj.env as Record<string, unknown>)
+    : undefined;
   return {
     model: typeof obj.model === "string" ? obj.model : undefined,
     baseUrl: typeof obj.baseUrl === "string" ? obj.baseUrl : undefined,
     systemPrompt: typeof obj.systemPrompt === "string" ? obj.systemPrompt : undefined,
     temperature: typeof obj.temperature === "number" ? obj.temperature : undefined,
     maxTokens: typeof obj.maxTokens === "number" ? obj.maxTokens : undefined,
+    apiKey: typeof obj.apiKey === "string" ? obj.apiKey : undefined,
+    env,
   };
 }
 
@@ -42,6 +49,15 @@ function readNonEmptyString(value: unknown): string | null {
 }
 
 function resolveApiKey(config: OpenRouterAdapterConfig): string | null {
+  const configApiKey = readNonEmptyString(config.apiKey);
+  if (configApiKey) return configApiKey;
+
+  const envConfig = config.env;
+  if (typeof envConfig === "object" && envConfig !== null && !Array.isArray(envConfig)) {
+    const envApiKey = readNonEmptyString((envConfig as Record<string, unknown>).OPENROUTER_API_KEY);
+    if (envApiKey) return envApiKey;
+  }
+
   const apiKey = readNonEmptyString(process.env.OPENROUTER_API_KEY);
   if (apiKey) return apiKey;
   return null;

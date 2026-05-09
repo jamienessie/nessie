@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, type SVGProps } from "react";
 import { Link, useNavigate, useParams } from "@/lib/router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  CompanySkillCatalogSearchResult,
+  CompanySkillCatalogSourceId,
   CompanySkillCreateRequest,
   CompanySkillDetail,
   CompanySkillFileDetail,
@@ -37,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Boxes,
+  Check,
   ChevronDown,
   ChevronRight,
   Code2,
@@ -57,6 +60,28 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
+
+const CATALOG_SOURCES: Array<{
+  id: CompanySkillCatalogSourceId;
+  label: string;
+  hint: string;
+}> = [
+  {
+    id: "skills_directory",
+    label: "Skills Directory",
+    hint: "Registry-backed search with importable catalog pages.",
+  },
+  {
+    id: "skene_cookbook",
+    label: "Skene Cookbook",
+    hint: "Search Skene's large skill library and import translated instructions.",
+  },
+  {
+    id: "prompt_index",
+    label: "The Prompt Index",
+    hint: "Search Prompt Index skill pages and import published SKILL.md content.",
+  },
+];
 
 type SkillTreeNode = {
   name: string;
@@ -778,6 +803,10 @@ export function CompanySkills() {
   const { pushToast } = useToastActions();
   const [skillFilter, setSkillFilter] = useState("");
   const [source, setSource] = useState("");
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogSourceId, setCatalogSourceId] = useState<CompanySkillCatalogSourceId>("skills_directory");
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogOffset, setCatalogOffset] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [emptySourceHelpOpen, setEmptySourceHelpOpen] = useState(false);
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
@@ -838,6 +867,19 @@ export function CompanySkills() {
       && selectedSkillId
       && (detailQuery.data?.sourceType === "github" || displayedDetail?.sourceType === "github"),
     ),
+    staleTime: 60_000,
+  });
+
+  const catalogQueryResult = useQuery<CompanySkillCatalogSearchResult>({
+    queryKey: queryKeys.companySkills.discovery(
+      selectedCompanyId ?? "",
+      catalogSourceId,
+      catalogQuery,
+      12,
+      catalogOffset,
+    ),
+    queryFn: () => companySkillsApi.searchCatalog(selectedCompanyId!, catalogSourceId, catalogQuery, 12, catalogOffset),
+    enabled: Boolean(selectedCompanyId && catalogOpen),
     staleTime: 60_000,
   });
 
@@ -916,6 +958,7 @@ export function CompanySkills() {
         pushToast({ tone: "warn", title: "Import warnings", body: result.warnings[0] });
       }
       setSource("");
+      setCatalogOpen(false);
     },
     onError: (error) => {
       pushToast({
@@ -925,6 +968,10 @@ export function CompanySkills() {
       });
     },
   });
+
+  useEffect(() => {
+    setCatalogOffset(0);
+  }, [catalogSourceId, catalogQuery]);
 
   const createSkill = useMutation({
     mutationFn: (payload: CompanySkillCreateRequest) => companySkillsApi.create(selectedCompanyId!, payload),
@@ -1184,6 +1231,135 @@ export function CompanySkills() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Browse skill catalogs</DialogTitle>
+            <DialogDescription>
+              Search external skill catalogs, then import a result into this company library.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+            <div className="space-y-2">
+              {CATALOG_SOURCES.map((catalogSource) => (
+                <button
+                  key={catalogSource.id}
+                  type="button"
+                  className={cn(
+                    "w-full rounded-md border px-3 py-3 text-left transition-colors hover:bg-accent/40",
+                    catalogSourceId === catalogSource.id ? "border-foreground bg-accent/30" : "border-border",
+                  )}
+                  onClick={() => setCatalogSourceId(catalogSource.id)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{catalogSource.label}</span>
+                    {catalogSourceId === catalogSource.id ? <Check className="h-4 w-4" /> : null}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{catalogSource.hint}</p>
+                </button>
+              ))}
+            </div>
+            <div className="min-w-0 space-y-4">
+              <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <input
+                  value={catalogQuery}
+                  onChange={(event) => setCatalogQuery(event.target.value)}
+                  placeholder="Search external skills"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+              {catalogQueryResult.isLoading ? (
+                <PageSkeleton variant="list" />
+              ) : catalogQueryResult.error ? (
+                <div className="rounded-md border border-destructive/40 px-3 py-3 text-sm text-destructive">
+                  {catalogQueryResult.error.message}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(catalogQueryResult.data?.items ?? []).length === 0 ? (
+                    <div className="rounded-md border border-border px-3 py-6 text-sm text-muted-foreground">
+                      No external skills matched this search.
+                    </div>
+                  ) : (
+                    (catalogQueryResult.data?.items ?? []).map((item) => (
+                      <div key={`${item.sourceId}:${item.externalId}`} className="rounded-md border border-border px-4 py-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-medium">{item.name}</div>
+                            {item.description ? (
+                              <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                            ) : null}
+                            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              {item.author ? <span>By {item.author}</span> : null}
+                              {item.repository ? <span>{item.repository}</span> : null}
+                              {item.verified !== null ? <span>{item.verified ? "Verified" : "Unverified"}</span> : null}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={item.detailUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              Source
+                            </a>
+                            <Button
+                              size="sm"
+                              onClick={() => importSkill.mutate(item.importSource)}
+                              disabled={importSkill.isPending}
+                            >
+                              Import
+                            </Button>
+                          </div>
+                        </div>
+                        {item.tags.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {item.tags.slice(0, 6).map((tag) => (
+                              <span key={tag} className="rounded-sm border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))
+                  )}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs text-muted-foreground">
+                      {catalogQueryResult.data?.total !== null && catalogQueryResult.data?.total !== undefined
+                        ? `${catalogQueryResult.data.total.toLocaleString()} results`
+                        : "Search results"}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCatalogOffset((current) => Math.max(0, current - 12))}
+                        disabled={catalogOffset === 0 || catalogQueryResult.isFetching}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCatalogOffset(catalogQueryResult.data?.nextOffset ?? catalogOffset)}
+                        disabled={catalogQueryResult.data?.nextOffset == null || catalogQueryResult.isFetching}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter showCloseButton />
+        </DialogContent>
+      </Dialog>
+
       <div className="grid min-h-[calc(100vh-12rem)] gap-0 xl:grid-cols-[19rem_minmax(0,1fr)]">
         <aside className="border-r border-border">
           <div className="border-b border-border px-4 py-3">
@@ -1227,6 +1403,14 @@ export function CompanySkills() {
                 placeholder="Paste path, GitHub URL, or skills.sh command"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setCatalogOpen(true)}
+                disabled={importSkill.isPending}
+              >
+                Browse
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"

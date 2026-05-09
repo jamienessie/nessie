@@ -11,6 +11,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import type { ServerAdapterModule } from "./types.js";
 import { logger } from "../middleware/logger.js";
 
@@ -73,6 +74,10 @@ function resolvePackageEntryPoint(packageDir: string): string {
     return typeof exp === "string" ? exp : (exp.import ?? exp.default ?? "index.js");
   }
   return pkg.main ?? "index.js";
+}
+
+function toImportSpecifier(modulePath: string): string {
+  return pathToFileURL(modulePath).href;
 }
 
 // ---------------------------------------------------------------------------
@@ -174,10 +179,14 @@ export async function loadExternalAdapterPackage(
   const entryPoint = resolvePackageEntryPoint(packageDir);
   const modulePath = path.resolve(packageDir, entryPoint);
   const uiParserSource = extractUiParserSource(packageDir, packageName);
+  const importSpecifier = toImportSpecifier(modulePath);
 
-  logger.info({ packageName, packageDir, entryPoint, modulePath, hasUiParser: !!uiParserSource }, "Loading external adapter package");
+  logger.info(
+    { packageName, packageDir, entryPoint, modulePath, importSpecifier, hasUiParser: !!uiParserSource },
+    "Loading external adapter package",
+  );
 
-  const mod = await import(modulePath);
+  const mod = await import(importSpecifier);
   const adapterModule = validateAdapterModule(mod, packageName);
 
   if (uiParserSource) {
@@ -212,7 +221,7 @@ export async function reloadExternalAdapter(
   const packageDir = resolvePackageDir(record);
   const entryPoint = resolvePackageEntryPoint(packageDir);
   const modulePath = path.resolve(packageDir, entryPoint);
-  const fileUrl = `file://${modulePath}`;
+  const fileUrl = toImportSpecifier(modulePath);
 
   // Bust ESM module cache so re-import loads fresh code from disk.
   // Query-string trick (?t=...) works in Node; Bun may need the file:// URL

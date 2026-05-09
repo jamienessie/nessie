@@ -9,6 +9,10 @@ import { readPaperclipSkillSyncPreference } from "@nessie/adapter-utils/server-u
 import type { PaperclipSkillEntry } from "@nessie/adapter-utils/server-utils";
 import type {
   CompanySkill,
+  CompanySkillCatalogEntry,
+  CompanySkillCatalogSearchResult,
+  CompanySkillCatalogSource,
+  CompanySkillCatalogSourceId,
   CompanySkillCreateRequest,
   CompanySkillCompatibility,
   CompanySkillDetail,
@@ -150,6 +154,28 @@ type RuntimeSkillEntryOptions = {
 };
 
 const skillInventoryRefreshPromises = new Map<string, Promise<void>>();
+const skeneTreeCache = new Map<string, Promise<string[]>>();
+
+const COMPANY_SKILL_CATALOG_SOURCES: Record<CompanySkillCatalogSourceId, CompanySkillCatalogSource> = {
+  skills_directory: {
+    id: "skills_directory",
+    label: "Skills Directory",
+    description: "Search the Skills Directory registry and import catalog skills into the company library.",
+    homepageUrl: "https://www.skillsdirectory.com/skills",
+  },
+  skene_cookbook: {
+    id: "skene_cookbook",
+    label: "Skene Cookbook",
+    description: "Search Skene's skill library and import translated instructions into the company library.",
+    homepageUrl: "https://github.com/SkeneTechnologies/skene-cookbook",
+  },
+  prompt_index: {
+    id: "prompt_index",
+    label: "The Prompt Index",
+    description: "Search The Prompt Index skill database and import published SKILL.md content into the company library.",
+    homepageUrl: "https://www.thepromptindex.com/skill-database.php",
+  },
+};
 
 function selectCompanySkillColumns() {
   return {
@@ -560,6 +586,28 @@ async function fetchJson<T>(url: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+function decodeHtmlEntities(raw: string) {
+  return raw
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&#(\d+);/g, (_match, value: string) => {
+      const code = Number.parseInt(value, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _match;
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_match, value: string) => {
+      const code = Number.parseInt(value, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _match;
+    });
+}
+
+function stripHtmlTags(raw: string) {
+  return decodeHtmlEntities(raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+}
+
 
 async function resolveGitHubDefaultBranch(owner: string, repo: string, apiBase: string) {
   const response = await fetchJson<{ default_branch?: string }>(
@@ -794,6 +842,87 @@ function deriveImportedSkillSource(
       sourceKind: "catalog",
     },
   };
+}
+
+function isSkillsDirectorySkillUrl(sourceUrl: string) {
+  return /^https?:\/\/(?:www\.)?skillsdirectory\.com\/skills\/[A-Za-z0-9_.-]+(?:[/?#].*)?$/i.test(sourceUrl);
+}
+
+function isPromptIndexSkillUrl(sourceUrl: string) {
+  return /^https?:\/\/(?:www\.)?thepromptindex\.com\/skillview\.php\?id=\d+(?:[&#].*)?$/i.test(sourceUrl);
+}
+
+function extractSkillMarkdownFromHtmlPage(html: string) {
+  const codeBlockMatch = html.match(/<pre[^>]*>\s*<code[^>]*>([\s\S]*?)<\/code>\s*<\/pre>/i);
+  if (!codeBlockMatch?.[1]) {
+    throw unprocessable("This page did not expose SKILL.md content.");
+  }
+  return decodeHtmlEntities(codeBlockMatch[1]).trim();
+}
+
+async function readSkillsDirectorySkillImports(companyId: string, sourceUrl: string): Promise<ImportedSkill[]> {
+  const html = await fetchText(sourceUrl);
+  const markdown = extractSkillMarkdownFromHtmlPage(html);
+  const parsedMarkdown = parseFrontmatterMarkdown(markdown);
+  const slugMatch = sourceUrl.match(/\/skills\/([A-Za-z0-9_.-]+)/i);
+  const fallbackSlug = slugMatch?.[1] ?? "skills-directory-skill";
+  const slug = deriveImportedSkillSlug(parsedMarkdown.frontmatter, fallbackSlug);
+  const inventory: CompanySkillFileInventoryEntry[] = [{ path: "SKILL.md", kind: "skill" }];
+  return [{
+    key: deriveCanonicalSkillKey(companyId, {
+      slug,
+      sourceType: "catalog",
+      sourceLocator: sourceUrl,
+      metadata: {
+        sourceKind: "skills_directory",
+      },
+    }),
+    slug,
+    name: asString(parsedMarkdown.frontmatter.name) ?? slug,
+    description: asString(parsedMarkdown.frontmatter.description),
+    markdown,
+    sourceType: "catalog",
+    sourceLocator: sourceUrl,
+    sourceRef: null,
+    trustLevel: deriveTrustLevel(inventory),
+    compatibility: "compatible",
+    fileInventory: inventory,
+    metadata: {
+      sourceKind: "skills_directory",
+    },
+  }];
+}
+
+async function readPromptIndexSkillImports(companyId: string, sourceUrl: string): Promise<ImportedSkill[]> {
+  const html = await fetchText(sourceUrl);
+  const markdown = extractSkillMarkdownFromHtmlPage(html);
+  const parsedMarkdown = parseFrontmatterMarkdown(markdown);
+  const sourceId = sourceUrl.match(/[?&]id=(\d+)/i)?.[1] ?? "prompt-index-skill";
+  const slug = deriveImportedSkillSlug(parsedMarkdown.frontmatter, sourceId);
+  const inventory: CompanySkillFileInventoryEntry[] = [{ path: "SKILL.md", kind: "skill" }];
+  return [{
+    key: deriveCanonicalSkillKey(companyId, {
+      slug,
+      sourceType: "catalog",
+      sourceLocator: sourceUrl,
+      metadata: {
+        sourceKind: "prompt_index",
+      },
+    }),
+    slug,
+    name: asString(parsedMarkdown.frontmatter.name) ?? slug,
+    description: asString(parsedMarkdown.frontmatter.description),
+    markdown,
+    sourceType: "catalog",
+    sourceLocator: sourceUrl,
+    sourceRef: null,
+    trustLevel: deriveTrustLevel(inventory),
+    compatibility: "compatible",
+    fileInventory: inventory,
+    metadata: {
+      sourceKind: "prompt_index",
+    },
+  }];
 }
 
 function readInlineSkillImports(companyId: string, files: Record<string, string>): ImportedSkill[] {
@@ -1053,6 +1182,18 @@ async function readUrlSkillImports(
 ): Promise<{ skills: ImportedSkill[]; warnings: string[] }> {
   const url = sourceUrl.trim();
   const warnings: string[] = [];
+  if (isSkillsDirectorySkillUrl(url)) {
+    return {
+      skills: await readSkillsDirectorySkillImports(companyId, url),
+      warnings,
+    };
+  }
+  if (isPromptIndexSkillUrl(url)) {
+    return {
+      skills: await readPromptIndexSkillImports(companyId, url),
+      warnings,
+    };
+  }
   const looksLikeRepoUrl = (() => { try {
     const parsed = new URL(url);
     if (parsed.protocol !== "https:") return false;
@@ -1195,6 +1336,176 @@ async function readUrlSkillImports(
   }
 
   throw unprocessable("Unsupported skill source. Use a local path or URL.");
+}
+
+async function searchSkillsDirectoryCatalog(
+  query: string,
+  limit: number,
+  offset: number,
+): Promise<CompanySkillCatalogSearchResult> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  if (query.trim()) {
+    params.set("q", query.trim());
+  }
+  const response = await fetchJson<{
+    skills?: Array<{
+      slug?: string;
+      name?: string;
+      description?: string;
+      repository?: string;
+      author?: string | { name?: string | null } | null;
+      tags?: string[];
+      verified?: boolean;
+    }>;
+    pagination?: { total?: number; hasMore?: boolean };
+  }>(`https://www.skillsdirectory.com/api/registry?${params.toString()}`);
+  const items: CompanySkillCatalogEntry[] = (response.skills ?? []).flatMap((skill) => {
+    const slug = asString(skill.slug);
+    const name = asString(skill.name);
+    if (!slug || !name) return [];
+    const author = typeof skill.author === "string"
+      ? asString(skill.author)
+      : asString(skill.author?.name);
+    return [{
+      sourceId: "skills_directory",
+      externalId: slug,
+      slug,
+      name,
+      description: asString(skill.description),
+      author,
+      detailUrl: `https://www.skillsdirectory.com/skills/${slug}`,
+      importSource: `https://www.skillsdirectory.com/skills/${slug}`,
+      repository: asString(skill.repository),
+      tags: Array.isArray(skill.tags) ? skill.tags.flatMap((tag) => typeof tag === "string" ? [tag] : []) : [],
+      verified: typeof skill.verified === "boolean" ? skill.verified : null,
+    }];
+  });
+  const total = typeof response.pagination?.total === "number" ? response.pagination.total : null;
+  const nextOffset = response.pagination?.hasMore ? offset + limit : null;
+  return {
+    source: COMPANY_SKILL_CATALOG_SOURCES.skills_directory,
+    query,
+    items,
+    total,
+    limit,
+    offset,
+    nextOffset,
+  };
+}
+
+async function listSkeneInstructionPaths() {
+  const cacheKey = "main";
+  const cached = skeneTreeCache.get(cacheKey);
+  if (cached) return cached;
+  const promise = fetchJson<{ tree?: Array<{ path?: string; type?: string }> }>(
+    "https://api.github.com/repos/SkeneTechnologies/skene-cookbook/git/trees/main?recursive=1",
+  ).then((response) => (
+    (response.tree ?? [])
+      .filter((entry) => entry.type === "blob" && typeof entry.path === "string" && entry.path.endsWith("/instructions.md"))
+      .map((entry) => entry.path as string)
+      .filter((entry) => entry.startsWith("skills-library/"))
+      .sort((left, right) => left.localeCompare(right))
+  ));
+  skeneTreeCache.set(cacheKey, promise);
+  return promise;
+}
+
+async function readSkeneCatalogEntry(instructionsPath: string): Promise<CompanySkillCatalogEntry | null> {
+  const rawUrl = `https://raw.githubusercontent.com/SkeneTechnologies/skene-cookbook/main/${instructionsPath}`;
+  const markdown = await fetchText(rawUrl);
+  const parsed = parseFrontmatterMarkdown(markdown);
+  const name = asString(parsed.frontmatter.name) ?? normalizeSkillSlug(path.posix.basename(path.posix.dirname(instructionsPath)));
+  if (!name) return null;
+  const skillDir = path.posix.dirname(instructionsPath);
+  return {
+    sourceId: "skene_cookbook",
+    externalId: skillDir,
+    slug: normalizeSkillSlug(name),
+    name,
+    description: asString(parsed.frontmatter.description),
+    author: "SkeneTechnologies",
+    detailUrl: `https://github.com/SkeneTechnologies/skene-cookbook/tree/main/${skillDir}`,
+    importSource: rawUrl,
+    repository: "SkeneTechnologies/skene-cookbook",
+    tags: skillDir.split("/").slice(1, -1).map((segment) => segment.replace(/[_-]+/g, " ")),
+    verified: null,
+  };
+}
+
+async function searchSkeneCatalog(
+  query: string,
+  limit: number,
+  offset: number,
+): Promise<CompanySkillCatalogSearchResult> {
+  const instructionPaths = await listSkeneInstructionPaths();
+  const normalizedQuery = query.trim().toLowerCase();
+  const filtered = instructionPaths.filter((entry) => {
+    if (!normalizedQuery) return true;
+    const haystack = entry.toLowerCase().replace(/[\\/_.-]+/g, " ");
+    return haystack.includes(normalizedQuery);
+  });
+  const page = filtered.slice(offset, offset + limit);
+  const items = (await Promise.all(page.map((entry) => readSkeneCatalogEntry(entry))))
+    .filter((entry): entry is CompanySkillCatalogEntry => Boolean(entry));
+  return {
+    source: COMPANY_SKILL_CATALOG_SOURCES.skene_cookbook,
+    query,
+    items,
+    total: filtered.length,
+    limit,
+    offset,
+    nextOffset: offset + limit < filtered.length ? offset + limit : null,
+  };
+}
+
+async function searchPromptIndexCatalog(
+  query: string,
+  limit: number,
+  offset: number,
+): Promise<CompanySkillCatalogSearchResult> {
+  const params = new URLSearchParams({
+    page: String(Math.floor(offset / Math.max(limit, 1)) + 1),
+  });
+  if (query.trim()) {
+    params.set("search", query.trim());
+  }
+  const html = await fetchText(`https://www.thepromptindex.com/skill-database.php?${params.toString()}`);
+  const cardPattern = /<article class="skill-card"[\s\S]*?window\.location\.href='skillview\.php\?id=(\d+)';[\s\S]*?<h3 class="skill-title">([\s\S]*?)<\/h3>[\s\S]*?<p class="skill-excerpt">([\s\S]*?)<\/p>/gi;
+  const items: CompanySkillCatalogEntry[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = cardPattern.exec(html)) !== null && items.length < limit) {
+    const externalId = match[1] ?? "";
+    const name = stripHtmlTags(match[2] ?? "");
+    if (!externalId || !name) continue;
+    const description = stripHtmlTags(match[3] ?? "");
+    items.push({
+      sourceId: "prompt_index",
+      externalId,
+      slug: null,
+      name,
+      description: description || null,
+      author: null,
+      detailUrl: `https://www.thepromptindex.com/skillview.php?id=${externalId}`,
+      importSource: `https://www.thepromptindex.com/skillview.php?id=${externalId}`,
+      repository: null,
+      tags: [],
+      verified: null,
+    });
+  }
+  const totalMatch = html.match(/Browse our curated library of ([\d,]+)\+ SKILL\.md files/i);
+  const total = totalMatch?.[1] ? Number.parseInt(totalMatch[1].replace(/,/g, ""), 10) : null;
+  return {
+    source: COMPANY_SKILL_CATALOG_SOURCES.prompt_index,
+    query,
+    items,
+    total,
+    limit,
+    offset,
+    nextOffset: items.length === limit ? offset + limit : null,
+  };
 }
 
 function toCompanySkill(row: CompanySkillRow): CompanySkill {
@@ -2415,6 +2726,27 @@ export function companySkillService(db: Db) {
     return { imported, warnings };
   }
 
+  async function searchCatalog(
+    _companyId: string,
+    sourceId: CompanySkillCatalogSourceId,
+    query: string,
+    limit = 12,
+    offset = 0,
+  ): Promise<CompanySkillCatalogSearchResult> {
+    const normalizedLimit = Math.max(1, Math.min(24, Math.trunc(limit)));
+    const normalizedOffset = Math.max(0, Math.trunc(offset));
+    switch (sourceId) {
+      case "skills_directory":
+        return searchSkillsDirectoryCatalog(query, normalizedLimit, normalizedOffset);
+      case "skene_cookbook":
+        return searchSkeneCatalog(query, normalizedLimit, normalizedOffset);
+      case "prompt_index":
+        return searchPromptIndexCatalog(query, normalizedLimit, normalizedOffset);
+      default:
+        throw unprocessable(`Unsupported catalog source: ${sourceId}`);
+    }
+  }
+
   async function deleteSkill(companyId: string, skillId: string): Promise<CompanySkill | null> {
     const row = await db
       .select()
@@ -2470,6 +2802,7 @@ export function companySkillService(db: Db) {
     createLocalSkill,
     deleteSkill,
     importFromSource,
+    searchCatalog,
     scanProjectWorkspaces,
     importPackageFiles,
     installUpdate,

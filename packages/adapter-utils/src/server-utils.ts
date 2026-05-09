@@ -1019,7 +1019,7 @@ export function defaultPathForPlatform() {
 }
 
 function windowsPathExts(env: NodeJS.ProcessEnv): string[] {
-  return (env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";").filter(Boolean);
+  return (env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM;.PS1").split(";").filter(Boolean);
 }
 
 async function pathExists(candidate: string) {
@@ -1052,6 +1052,17 @@ async function resolveCommandPath(command: string, cwd: string, env: NodeJS.Proc
           : exts.map((ext) => path.join(dir, `${command}${ext}`))
         : [path.join(dir, command)];
     for (const candidate of candidates) {
+      if (await pathExists(candidate)) return candidate;
+    }
+  }
+
+  // Fallback: check npm global prefix directory on Windows
+  if (process.platform === "win32") {
+    const npmGlobalFallback = path.join(env.APPDATA ?? "", "npm");
+    const fallbackCandidates = hasExtension
+      ? [path.join(npmGlobalFallback, command)]
+      : exts.map((ext) => path.join(npmGlobalFallback, `${command}${ext}`));
+    for (const candidate of fallbackCandidates) {
       if (await pathExists(candidate)) return candidate;
     }
   }

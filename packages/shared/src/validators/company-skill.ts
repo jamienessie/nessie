@@ -70,6 +70,39 @@ export const companySkillImportSchema = z.object({
   source: z.string().min(1),
 });
 
+export const companySkillCatalogSourceIdSchema = z.enum(["skills_directory", "skene_cookbook", "prompt_index"]);
+
+export const companySkillCatalogSourceSchema = z.object({
+  id: companySkillCatalogSourceIdSchema,
+  label: z.string().min(1),
+  description: z.string().min(1),
+  homepageUrl: z.string().url(),
+});
+
+export const companySkillCatalogEntrySchema = z.object({
+  sourceId: companySkillCatalogSourceIdSchema,
+  externalId: z.string().min(1),
+  slug: z.string().min(1).nullable(),
+  name: z.string().min(1),
+  description: z.string().nullable(),
+  author: z.string().nullable(),
+  detailUrl: z.string().url(),
+  importSource: z.string().min(1),
+  repository: z.string().nullable(),
+  tags: z.array(z.string()),
+  verified: z.boolean().nullable(),
+});
+
+export const companySkillCatalogSearchResultSchema = z.object({
+  source: companySkillCatalogSourceSchema,
+  query: z.string(),
+  items: z.array(companySkillCatalogEntrySchema),
+  total: z.number().int().nonnegative().nullable(),
+  limit: z.number().int().positive(),
+  offset: z.number().int().nonnegative(),
+  nextOffset: z.number().int().nonnegative().nullable(),
+});
+
 export const companySkillProjectScanRequestSchema = z.object({
   projectIds: z.array(z.string().uuid()).optional(),
   workspaceIds: z.array(z.string().uuid()).optional(),

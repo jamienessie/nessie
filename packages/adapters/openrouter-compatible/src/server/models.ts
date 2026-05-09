@@ -247,13 +247,44 @@ export async function discoverOpenRouterModelsCached(input: {
   return models;
 }
 
+const FALLBACK_OPENROUTER_MODELS: AdapterModel[] = [
+  { id: "openai/gpt-5.4", label: "OpenAI GPT-5.4" },
+  { id: "openai/gpt-5.2", label: "OpenAI GPT-5.2" },
+  { id: "openai/gpt-5.1-codex", label: "OpenAI GPT-5.1 Codex" },
+  { id: "openai/gpt-5.1-codex-mini", label: "OpenAI GPT-5.1 Codex Mini" },
+  { id: "anthropic/claude-sonnet-4-5", label: "Claude Sonnet 4.5" },
+  { id: "anthropic/claude-opus-4-5", label: "Claude Opus 4.5" },
+  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { id: "deepseek/deepseek-chat-v3", label: "DeepSeek Chat V3" },
+  { id: "meta-llama/llama-4-maverick", label: "Llama 4 Maverick" },
+  { id: "meta-llama/llama-4-scout", label: "Llama 4 Scout" },
+  { id: "nvidia/llama-3.1-nemotron-70b", label: "Nemotron 70B" },
+];
+
 export async function listOpenRouterModels(): Promise<AdapterModel[]> {
-  return discoverOpenRouterModelsCached();
+  try {
+    return await discoverOpenRouterModelsCached();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("API key is missing")) {
+      return FALLBACK_OPENROUTER_MODELS;
+    }
+    throw err;
+  }
 }
 
 export async function refreshOpenRouterModels(): Promise<AdapterModel[]> {
   discoveryCache.clear();
-  return discoverOpenRouterModelsCached();
+  try {
+    return await discoverOpenRouterModelsCached();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.includes("API key is missing")) {
+      return FALLBACK_OPENROUTER_MODELS;
+    }
+    throw err;
+  }
 }
 
 export function requireOpenRouterModelId(input: unknown): string {

@@ -30,16 +30,13 @@ export type AgentStatus = (typeof AGENT_STATUSES)[number];
 export const AGENT_ADAPTER_TYPES = [
   "process",
   "http",
-  "acpx_local",
-  "azure_openai",
   "claude_local",
   "codex_local",
-  "gemini_local",
   "opencode_local",
+  "openai_compatible",
   "openrouter_compatible",
-  "pi_local",
-  "cursor",
-  "openclaw_gateway",
+  "gemini_compatible",
+  "http_webhook",
 ] as const;
 export type AgentAdapterType = (typeof AGENT_ADAPTER_TYPES)[number] | (string & {});
 

@@ -41,4 +41,42 @@ describe("buildNewAgentHirePayload", () => {
       defaultEnvironmentId: null,
     });
   });
+
+  it("persists create-time env bindings into adapterConfig.env", () => {
+    const payload = buildNewAgentHirePayload({
+      name: "OpenRouter Agent",
+      effectiveRole: "general",
+      configValues: {
+        ...defaultCreateValues,
+        adapterType: "openrouter_compatible",
+        envBindings: {
+          OPENROUTER_API_KEY: { type: "secret_ref", secretId: "secret-openrouter", version: "latest" },
+          OPENROUTER_HTTP_REFERER: { type: "plain", value: "https://example.com" },
+        },
+        envVars: "OPENROUTER_TITLE=Paperclip",
+      },
+      adapterConfig: {
+        model: "openai/gpt-5.2",
+      },
+    });
+
+    expect(payload.adapterConfig).toMatchObject({
+      model: "openai/gpt-5.2",
+      env: {
+        OPENROUTER_API_KEY: {
+          type: "secret_ref",
+          secretId: "secret-openrouter",
+          version: "latest",
+        },
+        OPENROUTER_HTTP_REFERER: {
+          type: "plain",
+          value: "https://example.com",
+        },
+        OPENROUTER_TITLE: {
+          type: "plain",
+          value: "Paperclip",
+        },
+      },
+    });
+  });
 });

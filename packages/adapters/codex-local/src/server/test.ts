@@ -18,6 +18,7 @@ import {
 } from "@nessie/adapter-utils/execution-target";
 import path from "node:path";
 import os from "node:os";
+import fs from "node:fs/promises";
 import { parseCodexJsonl } from "./parse.js";
 import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 import { codexHomeDir, readCodexAuthInfo } from "./quota.js";
@@ -199,22 +200,31 @@ export async function testEnvironment(
       let probeCommand = command;
       let probeArgs = args;
       const probeEnv: Record<string, string> = { ...env };
+      let probeHome: string | null = null;
       if (probeApiKey) {
-        const probeHome = targetIsRemote
+        probeHome = targetIsRemote
           ? `/tmp/paperclip-codex-probe-${runId}`
           : path.join(os.tmpdir(), `paperclip-codex-probe-${runId}`);
         probeEnv.CODEX_HOME = probeHome;
-        probeEnv._PAPERCLIP_CODEX_AUTH_JSON = JSON.stringify({ OPENAI_API_KEY: probeApiKey });
-        probeCommand = "sh";
-        // Trap on EXIT removes the probe home (with the API-key auth.json) on
-        // any exit path; we drop `exec` so the wrapper shell stays alive long
-        // enough for the trap to fire after the child returns.
-        probeArgs = [
-          "-c",
-          'set -e; mkdir -p "$CODEX_HOME"; umask 077; printf "%s" "$_PAPERCLIP_CODEX_AUTH_JSON" > "$CODEX_HOME/auth.json"; unset _PAPERCLIP_CODEX_AUTH_JSON; trap \'rm -rf "$CODEX_HOME"\' EXIT INT TERM; "$0" "$@"',
-          command,
-          ...args,
-        ];
+        if (process.platform === "win32") {
+          // On Windows, write auth.json directly via Node.js fs since sh is
+          // not guaranteed to be available.
+          await fs.mkdir(probeHome, { recursive: true });
+          await fs.writeFile(
+            path.join(probeHome, "auth.json"),
+            JSON.stringify({ OPENAI_API_KEY: probeApiKey }),
+            { encoding: "utf-8" },
+          );
+        } else {
+          probeEnv._PAPERCLIP_CODEX_AUTH_JSON = JSON.stringify({ OPENAI_API_KEY: probeApiKey });
+          probeCommand = "sh";
+          probeArgs = [
+            "-c",
+            'set -e; mkdir -p "$CODEX_HOME"; umask 077; printf "%s" "$_PAPERCLIP_CODEX_AUTH_JSON" > "$CODEX_HOME/auth.json"; unset _PAPERCLIP_CODEX_AUTH_JSON; trap \'rm -rf "$CODEX_HOME"\' EXIT INT TERM; "$0" "$@"',
+            command,
+            ...args,
+          ];
+        }
       }
 
       const probe = await runAdapterExecutionTargetProcess(
@@ -276,6 +286,10 @@ export async function testEnvironment(
           ...(detail ? { detail } : {}),
           hint: "Run `codex exec --json -` manually in this working directory and prompt `Respond with hello` to debug.",
         });
+      }
+      // Clean up Windows temp probe home (Unix uses sh trap)
+      if (probeHome && process.platform === "win32") {
+        await fs.rm(probeHome, { recursive: true, force: true }).catch(() => {});
       }
     }
   }
