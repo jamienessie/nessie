@@ -6,6 +6,7 @@
  *   - codex_local        — Codex CLI (T1 subscription)
  *   - openai_compatible  — workhorse for T2/T3 via the cost-tier proxy
  *   - openrouter_compatible — remote OpenRouter catalog with live discovery
+ *   - azure_openai       — Azure OpenAI Service with live deployment discovery (T2)
  *   - http_webhook       — external automations / human-in-the-loop
  *   - process / http     — adapter-plugin transports (always available)
  *
@@ -19,6 +20,7 @@ export const BUILTIN_ADAPTER_TYPES = new Set([
   "codex_local",
   "openai_compatible",
   "openrouter_compatible",
+  "azure_openai",
   "http_webhook",
   "process",
   "http",

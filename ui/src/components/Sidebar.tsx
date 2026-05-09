@@ -104,12 +104,12 @@ export function Sidebar() {
           />
         </div>
 
-        <SidebarSection label="Work">
-          <SidebarNavItem to="/issues" label="Issues" icon={CircleDot} />
-          <SidebarNavItem to="/routines" label="Routines" icon={Repeat} />
-          <SidebarNavItem to="/goals" label="Goals" icon={Target} />
+        <SidebarSection label="Work" tone="work">
+          <SidebarNavItem to="/issues" label="Issues" icon={CircleDot} tone="work" />
+          <SidebarNavItem to="/routines" label="Routines" icon={Repeat} tone="work" />
+          <SidebarNavItem to="/goals" label="Goals" icon={Target} tone="work" />
           {showWorkspacesLink ? (
-            <SidebarNavItem to="/workspaces" label="Workspaces" icon={GitBranch} />
+            <SidebarNavItem to="/workspaces" label="Workspaces" icon={GitBranch} tone="work" />
           ) : null}
         </SidebarSection>
 
@@ -117,21 +117,21 @@ export function Sidebar() {
 
         <SidebarAgents />
 
-        <SidebarSection label="Company">
-          <SidebarNavItem to="/org" label="Org" icon={Network} />
-          <SidebarNavItem to="/departments" label="Departments" icon={Building2} />
-          <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
-          <SidebarNavItem to="/costs" label="Costs" icon={DollarSign} />
-          <SidebarNavItem to="/activity" label="Activity" icon={History} />
-          <SidebarNavItem to="/company/settings" label="Settings" icon={Settings} />
+        <SidebarSection label="Company" tone="company">
+          <SidebarNavItem to="/org" label="Org" icon={Network} tone="company" />
+          <SidebarNavItem to="/departments" label="Departments" icon={Building2} tone="company" />
+          <SidebarNavItem to="/skills" label="Skills" icon={Boxes} tone="company" />
+          <SidebarNavItem to="/costs" label="Costs" icon={DollarSign} tone="company" />
+          <SidebarNavItem to="/activity" label="Activity" icon={History} tone="company" />
+          <SidebarNavItem to="/company/settings" label="Settings" icon={Settings} tone="company" />
         </SidebarSection>
 
-        <SidebarSection label="Operator">
-          <SidebarNavItem to="/chief-of-staff" label="Chief of Staff" icon={Sparkles} />
-          <SidebarNavItem to="/briefs" label="Executive Briefs" icon={ScrollText} />
-          <SidebarNavItem to="/hiring" label="Hiring" icon={UserPlus} />
-          <SidebarNavItem to="/meetings" label="Meetings" icon={Users} />
-          <SidebarNavItem to="/trust-layer" label="Trust Layer" icon={ShieldCheck} />
+        <SidebarSection label="Operator" tone="operator">
+          <SidebarNavItem to="/chief-of-staff" label="Chief of Staff" icon={Sparkles} tone="operator" />
+          <SidebarNavItem to="/briefs" label="Executive Briefs" icon={ScrollText} tone="operator" />
+          <SidebarNavItem to="/hiring" label="Hiring" icon={UserPlus} tone="operator" />
+          <SidebarNavItem to="/meetings" label="Meetings" icon={Users} tone="operator" />
+          <SidebarNavItem to="/trust-layer" label="Trust Layer" icon={ShieldCheck} tone="operator" />
         </SidebarSection>
 
         <PluginSlotOutlet

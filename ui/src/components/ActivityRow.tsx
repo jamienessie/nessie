@@ -1,6 +1,7 @@
 import { Link } from "@/lib/router";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { deriveInitials } from "./Identity";
+import { getAgentAccent } from "../lib/agent-color";
 import { IssueReferenceActivitySummary } from "./IssueReferenceActivitySummary";
 import { timeAgo } from "../lib/timeAgo";
 import { cn } from "../lib/utils";
@@ -50,6 +51,8 @@ export function ActivityRow({ event, agentMap, userProfileMap, entityNameMap, en
   const userProfile = event.actorType === "user" ? userProfileMap?.get(event.actorId) : null;
   const actorName = actor?.name ?? (event.actorType === "system" ? "System" : userProfile?.label ?? (event.actorType === "user" ? "Board" : event.actorId || "Unknown"));
   const actorAvatarUrl = userProfile?.image ?? null;
+  const actorAgentId = event.actorType === "agent" ? event.actorId : null;
+  const actorAccent = actorAgentId ? getAgentAccent(actorAgentId) : null;
 
   const inner = (
     <div className="space-y-2">
@@ -57,7 +60,9 @@ export function ActivityRow({ event, agentMap, userProfileMap, entityNameMap, en
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Avatar size="xs">
             {actorAvatarUrl && <AvatarImage src={actorAvatarUrl} alt={actorName} />}
-            <AvatarFallback>{deriveInitials(actorName)}</AvatarFallback>
+            <AvatarFallback className={actorAccent ? cn(actorAccent.bg, actorAccent.text, "font-semibold") : undefined}>
+              {deriveInitials(actorName)}
+            </AvatarFallback>
           </Avatar>
           <p className="min-w-0 flex-1 truncate">
             <span>{actorName}</span>

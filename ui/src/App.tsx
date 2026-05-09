@@ -30,6 +30,7 @@ import { Inbox } from "./pages/Inbox";
 import { Departments } from "./pages/Departments";
 import { Hiring } from "./pages/Hiring";
 import { Meetings } from "./pages/Meetings";
+import { MeetingRoom } from "./pages/MeetingRoom";
 import { TrustLayer } from "./pages/TrustLayer";
 import { ChiefOfStaff } from "./pages/ChiefOfStaff";
 import { Briefs } from "./pages/Briefs";
@@ -131,6 +132,7 @@ function boardRoutes() {
       <Route path="departments" element={<Departments />} />
       <Route path="hiring" element={<Hiring />} />
       <Route path="meetings" element={<Meetings />} />
+      <Route path="meetings/:meetingId/room" element={<MeetingRoom />} />
       <Route path="trust-layer" element={<TrustLayer />} />
       <Route path="chief-of-staff" element={<ChiefOfStaff />} />
       <Route path="briefs" element={<Briefs />} />
@@ -317,6 +319,34 @@ export function App() {
           <Route path="projects/:projectId/workspaces" element={<UnprefixedBoardRedirect />} />
           <Route path="projects/:projectId/workspaces/:workspaceId" element={<UnprefixedBoardRedirect />} />
           <Route path="projects/:projectId/configuration" element={<UnprefixedBoardRedirect />} />
+          <Route path="org" element={<UnprefixedBoardRedirect />} />
+          <Route path="departments" element={<UnprefixedBoardRedirect />} />
+          <Route path="costs" element={<UnprefixedBoardRedirect />} />
+          <Route path="activity" element={<UnprefixedBoardRedirect />} />
+          <Route path="company/settings" element={<UnprefixedBoardRedirect />} />
+          <Route path="company/settings/*" element={<UnprefixedBoardRedirect />} />
+          <Route path="meetings" element={<UnprefixedBoardRedirect />} />
+          <Route path="meetings/:meetingId/room" element={<UnprefixedBoardRedirect />} />
+          <Route path="chief-of-staff" element={<UnprefixedBoardRedirect />} />
+          <Route path="briefs" element={<UnprefixedBoardRedirect />} />
+          <Route path="hiring" element={<UnprefixedBoardRedirect />} />
+          <Route path="trust-layer" element={<UnprefixedBoardRedirect />} />
+          <Route path="dashboard" element={<UnprefixedBoardRedirect />} />
+          <Route path="dashboard/live" element={<UnprefixedBoardRedirect />} />
+          <Route path="goals" element={<UnprefixedBoardRedirect />} />
+          <Route path="goals/:goalId" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals/pending" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals/all" element={<UnprefixedBoardRedirect />} />
+          <Route path="approvals/:approvalId" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/mine" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/recent" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/unread" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/all" element={<UnprefixedBoardRedirect />} />
+          <Route path="inbox/requests" element={<UnprefixedBoardRedirect />} />
+          <Route path="search" element={<UnprefixedBoardRedirect />} />
+          <Route path="design-guide" element={<UnprefixedBoardRedirect />} />
           <Route path="workspaces" element={<UnprefixedBoardRedirect />} />
           <Route path="execution-workspaces/:workspaceId" element={<UnprefixedBoardRedirect />} />
           <Route path="execution-workspaces/:workspaceId/services" element={<UnprefixedBoardRedirect />} />

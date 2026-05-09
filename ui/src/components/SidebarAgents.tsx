@@ -21,6 +21,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { cn, agentRouteRef, agentUrl } from "../lib/utils";
 import { useAgentOrder } from "../hooks/useAgentOrder";
 import { AgentIcon } from "./AgentIconPicker";
+import { getAgentAccent } from "../lib/agent-color";
 import { BudgetSidebarMarker } from "./BudgetSidebarMarker";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,6 +63,7 @@ function SidebarAgentItem({
   const isActive = activeAgentId === routeRef;
   const isPaused = agent.status === "paused";
   const isBudgetPaused = isPaused && agent.pauseReason === "budget";
+  const accent = getAgentAccent(agent.id ?? agent.name);
   const pauseResumeLabel = isPaused ? "Resume agent" : "Pause agent";
   const pauseResumeDisabled = disabled || agent.status === "pending_approval" || isBudgetPaused;
   const pauseResumeDisabledLabel = disabled
@@ -85,6 +87,7 @@ function SidebarAgentItem({
             : "text-foreground/80 hover:bg-accent/50 hover:text-foreground"
         )}
       >
+        <span className={cn("shrink-0 h-2 w-2 rounded-full", accent.bg)} aria-hidden />
         <AgentIcon icon={agent.icon} className="shrink-0 h-3.5 w-3.5 text-muted-foreground" />
         <span className="flex-1 truncate">{agent.name}</span>
         {(agent.pauseReason === "budget" || runCount > 0) && (

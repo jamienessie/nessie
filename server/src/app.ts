@@ -206,6 +206,12 @@ export async function createApp(
   // action items / memory / proposed issues).
   const { meetingRoutes } = await import("./routes/meetings.js");
   api.use(meetingRoutes(db));
+  // Resume auto-loops for any meeting still in `active` state — covers
+  // server restarts where the in-memory loop registry was lost.
+  void (async () => {
+    const { resumeActiveAutoLoops } = await import("./services/meeting-orchestrator.js");
+    await resumeActiveAutoLoops(db);
+  })();
   // Phase 4: HR pipeline (role templates, hires, candidates, scorecards).
   const { hireRoutes } = await import("./routes/hires.js");
   const { departmentRoutes } = await import("./routes/departments.js");

@@ -316,6 +316,11 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
   const getCapabilities = useAdapterCapabilities();
   const adapterCaps = getCapabilities(adapterType);
   const isLocal = adapterCaps.supportsInstructionsBundle || adapterCaps.supportsSkills || adapterCaps.supportsLocalAgentJwt;
+  // Managed-API adapters (no local CLI) still need the model picker rendered
+  // — the Permissions & Configuration block is gated on this flag.
+  const showAdapterConfigSection = isLocal
+    || adapterType === "openrouter_compatible"
+    || adapterType === "azure_openai";
   
   const showLegacyWorkingDirectoryField =
     isLocal && shouldShowLegacyWorkingDirectoryField({ isCreate, adapterConfig: config });
@@ -942,7 +947,7 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       </div>
 
       {/* ---- Permissions & Configuration ---- */}
-      {isLocal && (
+      {showAdapterConfigSection && (
         <div className={cn(!cards && "border-b border-border")}>
           {cards
             ? <h3 className="text-sm font-medium mb-3">Permissions &amp; Configuration</h3>
@@ -1012,7 +1017,8 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                 onRefreshModels={
                   adapterType === "codex_local" ||
                   adapterType === "acpx_local" ||
-                  adapterType === "openrouter_compatible"
+                  adapterType === "openrouter_compatible" ||
+                  adapterType === "azure_openai"
                     ? handleRefreshModels
                     : undefined
                 }

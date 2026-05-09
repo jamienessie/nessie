@@ -1,0 +1,21 @@
+export {
+  AZURE_OPENAI_DISCOVERY_API_VERSION,
+  DEFAULT_AZURE_OPENAI_API_VERSION,
+  buildAzureChatCompletionsUrl,
+  buildAzureChatHeaders,
+  discoverAzureOpenaiModels,
+  discoverAzureOpenaiModelsCached,
+  isReasoningDeployment,
+  listAzureOpenaiModels,
+  mapAzureDeployment,
+  parseAzureDeploymentsResponse,
+  readApiVersionFromConfigOrEnv,
+  refreshAzureOpenaiModels,
+  requireAzureApiKey,
+  requireAzureDeploymentId,
+  requireAzureEndpoint,
+  resetAzureOpenaiModelsCacheForTests,
+  sortAzureDeployments,
+  testAzureOpenaiEnvironment,
+} from "./models.js";
+export { execute, testEnvironment, sessionCodec } from "./execute.js";

@@ -43,6 +43,18 @@ import {
   modelProfiles as openAiCompatibleModelProfiles,
 } from "@nessie/adapter-openai-compatible";
 import {
+  execute as azureOpenaiExecute,
+  listAzureOpenaiModels,
+  refreshAzureOpenaiModels,
+  testEnvironment as azureOpenaiTestEnvironment,
+  sessionCodec as azureOpenaiSessionCodec,
+} from "@nessie/adapter-azure-openai/server";
+import {
+  agentConfigurationDoc as azureOpenaiAgentConfigurationDoc,
+  models as azureOpenaiModels,
+  modelProfiles as azureOpenaiModelProfiles,
+} from "@nessie/adapter-azure-openai";
+import {
   execute as openRouterCompatibleExecute,
   listOpenRouterModels,
   refreshOpenRouterModels,
@@ -171,6 +183,22 @@ const openRouterCompatibleAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openRouterCompatibleAgentConfigurationDoc,
 };
 
+const azureOpenaiAdapter: ServerAdapterModule = {
+  type: "azure_openai",
+  execute: azureOpenaiExecute,
+  testEnvironment: azureOpenaiTestEnvironment,
+  sessionCodec: azureOpenaiSessionCodec,
+  sessionManagement: getAdapterSessionManagement("azure_openai") ?? undefined,
+  models: azureOpenaiModels,
+  modelProfiles: azureOpenaiModelProfiles,
+  listModels: listAzureOpenaiModels,
+  refreshModels: refreshAzureOpenaiModels,
+  supportsLocalAgentJwt: false,
+  supportsInstructionsBundle: false,
+  requiresMaterializedRuntimeSkills: false,
+  agentConfigurationDoc: azureOpenaiAgentConfigurationDoc,
+};
+
 const httpWebhookAdapter: ServerAdapterModule = {
   type: "http_webhook",
   execute: httpWebhookExecute,
@@ -205,6 +233,7 @@ function registerBuiltInAdapters() {
     codexLocalAdapter,
     openAiCompatibleAdapter,
     openRouterCompatibleAdapter,
+    azureOpenaiAdapter,
     httpWebhookAdapter,
     processAdapter,
     httpAdapter,

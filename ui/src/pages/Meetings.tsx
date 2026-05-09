@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Users, DoorOpen } from "lucide-react";
+import { Link } from "@/lib/router";
 import {
   meetingsApi,
   MEETING_MODES,
@@ -466,33 +467,44 @@ function MeetingRow({
 }) {
   return (
     <div className="border border-border bg-card">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/40"
-      >
-        {expanded ? (
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        )}
-        <StateBadge state={meeting.state} />
-        <span className="flex-1 truncate text-sm font-medium">{meeting.title}</span>
-        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-          {meeting.mode.replaceAll("_", " ")}
-        </span>
-        <span className="text-[10px] tabular-nums text-muted-foreground">
-          {meeting.turnsUsed}{meeting.turnLimit ? `/${meeting.turnLimit}` : ""} turns
-        </span>
-        {meeting.spentCents > 0 && (
-          <span className="text-[10px] tabular-nums text-muted-foreground">
-            {meeting.spentCents}¢
+      <div className="flex w-full items-center gap-3 px-3 py-2.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex flex-1 items-center gap-3 text-left hover:opacity-80"
+          aria-label={expanded ? "Collapse details" : "Expand details"}
+        >
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
+          <StateBadge state={meeting.state} />
+          <span className="flex-1 truncate text-sm font-medium">{meeting.title}</span>
+          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+            {meeting.mode.replaceAll("_", " ")}
           </span>
-        )}
-        <span className="text-[10px] tabular-nums text-muted-foreground">
-          {new Date(meeting.createdAt).toLocaleDateString()}
-        </span>
-      </button>
+          <span className="text-[10px] tabular-nums text-muted-foreground">
+            {meeting.turnsUsed}{meeting.turnLimit ? `/${meeting.turnLimit}` : ""} turns
+          </span>
+          {meeting.spentCents > 0 && (
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {meeting.spentCents}¢
+            </span>
+          )}
+          <span className="text-[10px] tabular-nums text-muted-foreground">
+            {new Date(meeting.createdAt).toLocaleDateString()}
+          </span>
+        </button>
+        <Link
+          to={`/meetings/${meeting.id}/room`}
+          className="ml-2 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-accent/50"
+          title="Enter live meeting room"
+        >
+          <DoorOpen className="h-3 w-3" />
+          Enter
+        </Link>
+      </div>
       {expanded && (
         <MeetingDetail
           meeting={meeting}
