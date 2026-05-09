@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/api/client";
 import { useCompany } from "@/context/CompanyContext";
-import { Topbar, Pulse, AgentLabel, Panel, StarBar, AvatarCircle, HireDialog } from "@/components/cockpit";
+import { Topbar, Pulse, AgentLabel, Panel, StarBar, AvatarCircle } from "@/components/cockpit";
 
 // 5-stage kanban: Open → Sourcing → Interviewing → Trial → Recommended
 // + an unobtrusive Hired/Rejected lane summary at the bottom.
@@ -13,7 +13,6 @@ type RoleTemplate = {
   title: string;
   tier: "T1" | "T2" | "T3";
   departmentKey: string;
-  defaultAdapterType?: string;
   pitch: string;
 };
 
@@ -39,17 +38,6 @@ export function CockpitHR() {
   const [hires, setHires] = useState<Hire[]>([]);
   const [templates, setTemplates] = useState<RoleTemplate[]>([]);
   const [error, setError] = useState<string | null>(null);
-  // Phase 10B.1 — Hire dialog state.
-  const [hireTemplate, setHireTemplate] = useState<RoleTemplate | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-
-  const reloadHires = async () => {
-    if (!selectedCompany?.id) return;
-    try {
-      const res = await api.get<{ hires: Hire[] }>(`/hires?companyId=${encodeURIComponent(selectedCompany.id)}`);
-      setHires(res.hires ?? []);
-    } catch { /* swallow */ }
-  };
 
   useEffect(() => {
     if (!selectedCompany?.id) return;
@@ -148,30 +136,6 @@ export function CockpitHR() {
                   <span className={`tier t-${t.tier}`}>{t.tier}</span>
                 </div>
                 <div className="pitch">{t.pitch}</div>
-                {/* Phase 10B.1 — Hire button. */}
-                <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                  <button
-                    type="button"
-                    onClick={() => setHireTemplate(t)}
-                    disabled={!selectedCompany?.id}
-                    style={{
-                      padding: "5px 12px",
-                      borderRadius: 4,
-                      background: "color-mix(in oklch, " + accent + " 18%, transparent)",
-                      color: accent,
-                      border: "1px solid color-mix(in oklch, " + accent + " 35%, transparent)",
-                      cursor: selectedCompany?.id ? "pointer" : "not-allowed",
-                      fontFamily: "Geist Mono, monospace",
-                      fontSize: 10,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      fontWeight: 600,
-                      opacity: selectedCompany?.id ? 1 : 0.5,
-                    }}
-                  >
-                    Hire ▸
-                  </button>
-                </div>
               </div>
             );
           })}
@@ -235,31 +199,6 @@ export function CockpitHR() {
           </Panel>
         </div>
       </main>
-      {/* Phase 10B.1 — Hire dialog overlay. */}
-      {hireTemplate && selectedCompany?.id ? (
-        <HireDialog
-          companyId={selectedCompany.id}
-          template={hireTemplate}
-          onClose={() => setHireTemplate(null)}
-          onMinted={(agent) => {
-            setToast(`Hired ${agent.name}`);
-            void reloadHires();
-            window.setTimeout(() => setToast(null), 4000);
-          }}
-        />
-      ) : null}
-      {toast ? (
-        <div style={{
-          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
-          background: "color-mix(in oklch, var(--t3) 18%, var(--panel))",
-          border: "1px solid color-mix(in oklch, var(--t3) 35%, var(--line))",
-          color: "var(--ink)", padding: "10px 18px", borderRadius: 8, zIndex: 200,
-          fontFamily: "Geist Mono, monospace", fontSize: 11,
-          boxShadow: "0 8px 32px -12px color-mix(in oklch, var(--t3) 60%, transparent)",
-        }}>
-          ✓ {toast}
-        </div>
-      ) : null}
     </>
   );
 }

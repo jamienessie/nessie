@@ -27,7 +27,6 @@ import {
   ensureAbsoluteDirectory,
   ensurePaperclipSkillSymlink,
   ensurePathInEnv,
-  ensureWindowsUserCliPathInEnv,
   readPaperclipRuntimeSkillEntries,
   readPaperclipIssueWorkModeFromContext,
   resolvePaperclipDesiredSkillNames,
@@ -91,17 +90,6 @@ function resolveCodexBiller(env: Record<string, string>, billingType: "api" | "s
   const openAiCompatibleBiller = inferOpenAiCompatibleBiller(env, "openai");
   if (openAiCompatibleBiller === "openrouter") return "openrouter";
   return billingType === "subscription" ? "chatgpt" : openAiCompatibleBiller ?? "openai";
-}
-
-function applyPathEnvOverrides(
-  env: Record<string, string>,
-  runtimeEnv: Record<string, string>,
-): Record<string, string> {
-  const next = { ...env };
-  for (const key of ["PATH", "Path", "PATHEXT"] as const) {
-    if (typeof runtimeEnv[key] === "string") next[key] = runtimeEnv[key];
-  }
-  return next;
 }
 
 async function isLikelyPaperclipRepoRoot(candidate: string): Promise<boolean> {
@@ -510,15 +498,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     ),
   );
   const billingType = resolveCodexBillingType(effectiveEnv);
-  const runtimeEnvSource = executionTargetIsRemote
-    ? ensurePathInEnv(effectiveEnv)
-    : ensureWindowsUserCliPathInEnv(ensurePathInEnv(effectiveEnv));
   const runtimeEnv = Object.fromEntries(
-    Object.entries(runtimeEnvSource).filter(
+    Object.entries(ensurePathInEnv(effectiveEnv)).filter(
       (entry): entry is [string, string] => typeof entry[1] === "string",
     ),
   );
-  const processEnv = executionTargetIsRemote ? env : applyPathEnvOverrides(env, runtimeEnv);
   await ensureAdapterExecutionTargetRuntimeCommandInstalled({
     runId,
     target: executionTarget,
@@ -713,7 +697,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
 
     const proc = await runAdapterExecutionTargetProcess(runId, executionTarget, command, args, {
       cwd,
-      env: processEnv,
+      env,
       stdin: prompt,
       timeoutSec,
       graceSec,

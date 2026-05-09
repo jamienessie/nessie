@@ -1151,56 +1151,6 @@ export function ensurePathInEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return { ...env, PATH: defaultPathForPlatform() };
 }
 
-function readEnvPathValue(env: NodeJS.ProcessEnv): { key: "PATH" | "Path"; value: string } {
-  if (typeof env.PATH === "string") return { key: "PATH", value: env.PATH };
-  if (typeof env.Path === "string") return { key: "Path", value: env.Path };
-  return { key: "PATH", value: "" };
-}
-
-function windowsUserCliPathCandidates(env: NodeJS.ProcessEnv): string[] {
-  const userProfile = typeof env.USERPROFILE === "string" && env.USERPROFILE.trim()
-    ? env.USERPROFILE.trim()
-    : "";
-  const localAppData = typeof env.LOCALAPPDATA === "string" && env.LOCALAPPDATA.trim()
-    ? env.LOCALAPPDATA.trim()
-    : userProfile
-      ? path.win32.join(userProfile, "AppData", "Local")
-      : "";
-  const appData = typeof env.APPDATA === "string" && env.APPDATA.trim()
-    ? env.APPDATA.trim()
-    : userProfile
-      ? path.win32.join(userProfile, "AppData", "Roaming")
-      : "";
-
-  return [
-    localAppData ? path.win32.join(localAppData, "OpenAI", "Codex", "bin") : "",
-    appData ? path.win32.join(appData, "npm") : "",
-    localAppData ? path.win32.join(localAppData, "Microsoft", "WindowsApps") : "",
-  ].filter(Boolean);
-}
-
-export function ensureWindowsUserCliPathInEnv(
-  env: NodeJS.ProcessEnv,
-  options: { platform?: NodeJS.Platform } = {},
-): NodeJS.ProcessEnv {
-  if ((options.platform ?? process.platform) !== "win32") return env;
-
-  const withPath = ensurePathInEnv(env);
-  const { key, value } = readEnvPathValue(withPath);
-  const delimiter = ";";
-  const existingDirs = value.split(delimiter).filter(Boolean);
-  const existingLower = new Set(existingDirs.map((entry) => entry.toLowerCase()));
-  const additions = windowsUserCliPathCandidates(withPath).filter(
-    (candidate) => !existingLower.has(candidate.toLowerCase()),
-  );
-  if (additions.length === 0) return withPath;
-
-  return {
-    ...withPath,
-    [key]: [...existingDirs, ...additions].join(delimiter),
-  };
-}
-
 export async function ensureAbsoluteDirectory(
   cwd: string,
   opts: { createIfMissing?: boolean } = {},

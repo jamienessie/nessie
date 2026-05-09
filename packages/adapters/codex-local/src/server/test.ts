@@ -7,7 +7,6 @@ import {
   asString,
   parseObject,
   ensurePathInEnv,
-  ensureWindowsUserCliPathInEnv,
 } from "@nessie/adapter-utils/server-utils";
 import {
   ensureAdapterExecutionTargetCommandResolvable,
@@ -46,26 +45,6 @@ function firstNonEmptyLine(text: string): string {
 function commandLooksLike(command: string, expected: string): boolean {
   const base = path.basename(command).toLowerCase();
   return base === expected || base === `${expected}.cmd` || base === `${expected}.exe`;
-}
-
-function codexWindowsPathHint(): string {
-  return [
-    "Codex auth can be present even when the Paperclip server cannot find codex.exe.",
-    "Restart Paperclip from a shell with Codex on PATH, or set this adapter's command to the absolute codex.exe path",
-    "(for example C:\\Users\\<you>\\AppData\\Local\\OpenAI\\Codex\\bin\\codex.exe).",
-  ].join(" ");
-}
-
-function applyPathEnvOverrides(
-  env: Record<string, string>,
-  runtimeEnv: NodeJS.ProcessEnv,
-): Record<string, string> {
-  const next = { ...env };
-  for (const key of ["PATH", "Path", "PATHEXT"] as const) {
-    const value = runtimeEnv[key];
-    if (typeof value === "string") next[key] = value;
-  }
-  return next;
 }
 
 function summarizeProbeDetail(stdout: string, stderr: string, parsedError: string | null): string | null {
@@ -126,10 +105,7 @@ export async function testEnvironment(
   for (const [key, value] of Object.entries(envConfig)) {
     if (typeof value === "string") env[key] = value;
   }
-  const baseRuntimeEnv = ensurePathInEnv({ ...process.env, ...env });
-  const runtimeEnv = targetIsRemote
-    ? baseRuntimeEnv
-    : ensureWindowsUserCliPathInEnv(baseRuntimeEnv);
+  const runtimeEnv = ensurePathInEnv({ ...process.env, ...env });
   const installCheck = await maybeRunSandboxInstallCommand({
     runId,
     target,
@@ -152,7 +128,6 @@ export async function testEnvironment(
       level: "error",
       message: err instanceof Error ? err.message : "Command is not executable",
       detail: command,
-      ...(process.platform === "win32" && !targetIsRemote ? { hint: codexWindowsPathHint() } : {}),
     });
   }
 
@@ -223,9 +198,7 @@ export async function testEnvironment(
           : null;
       let probeCommand = command;
       let probeArgs = args;
-      let probeEnv: Record<string, string> = targetIsRemote
-        ? { ...env }
-        : applyPathEnvOverrides(env, runtimeEnv);
+      const probeEnv: Record<string, string> = { ...env };
       if (probeApiKey) {
         const probeHome = targetIsRemote
           ? `/tmp/paperclip-codex-probe-${runId}`

@@ -8,7 +8,6 @@ import {
   appendWithByteCap,
   buildInvocationEnvForLogs,
   DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE,
-  ensureWindowsUserCliPathInEnv,
   materializePaperclipSkillCopy,
   renderPaperclipWakePrompt,
   runningProcesses,
@@ -140,58 +139,6 @@ describe("sanitizeSshRemoteEnv", () => {
         },
       ),
     ).toEqual({ PATH: "/explicit/remote/bin" });
-  });
-});
-
-describe("ensureWindowsUserCliPathInEnv", () => {
-  it("adds common per-user Windows CLI directories without replacing existing PATH entries", () => {
-    const env = ensureWindowsUserCliPathInEnv(
-      {
-        PATH: "C:\\Windows\\System32",
-        LOCALAPPDATA: "C:\\Users\\paperclip\\AppData\\Local",
-        APPDATA: "C:\\Users\\paperclip\\AppData\\Roaming",
-      },
-      { platform: "win32" },
-    );
-
-    expect(env.PATH?.split(";")).toEqual([
-      "C:\\Windows\\System32",
-      "C:\\Users\\paperclip\\AppData\\Local\\OpenAI\\Codex\\bin",
-      "C:\\Users\\paperclip\\AppData\\Roaming\\npm",
-      "C:\\Users\\paperclip\\AppData\\Local\\Microsoft\\WindowsApps",
-    ]);
-  });
-
-  it("preserves Windows Path casing and avoids duplicate additions case-insensitively", () => {
-    const env = ensureWindowsUserCliPathInEnv(
-      {
-        Path: [
-          "C:\\Windows\\System32",
-          "c:\\users\\paperclip\\appdata\\local\\openai\\codex\\bin",
-        ].join(";"),
-        LOCALAPPDATA: "C:\\Users\\paperclip\\AppData\\Local",
-        APPDATA: "C:\\Users\\paperclip\\AppData\\Roaming",
-      },
-      { platform: "win32" },
-    );
-
-    expect(env.PATH).toBeUndefined();
-    expect(env.Path?.split(";")).toEqual([
-      "C:\\Windows\\System32",
-      "c:\\users\\paperclip\\appdata\\local\\openai\\codex\\bin",
-      "C:\\Users\\paperclip\\AppData\\Roaming\\npm",
-      "C:\\Users\\paperclip\\AppData\\Local\\Microsoft\\WindowsApps",
-    ]);
-  });
-
-  it("leaves non-Windows envs unchanged", () => {
-    const env = {
-      PATH: "/usr/bin",
-      LOCALAPPDATA: "C:\\Users\\paperclip\\AppData\\Local",
-      APPDATA: "C:\\Users\\paperclip\\AppData\\Roaming",
-    };
-
-    expect(ensureWindowsUserCliPathInEnv(env, { platform: "linux" })).toBe(env);
   });
 });
 

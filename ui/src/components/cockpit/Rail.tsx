@@ -40,7 +40,10 @@ export function Rail() {
         })}
       </div>
       <div style={{ flex: 1 }} />
-      {/* Phase 10 — legacy view link removed; one UI. */}
+      <Link to="/dashboard" className="item" title="Switch to legacy view">
+        <span className="ico">⤺</span>
+        <span>legacy</span>
+      </Link>
     </aside>
   );
 }

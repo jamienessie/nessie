@@ -1,7 +1,6 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "@/lib/router";
 import { Button } from "@/components/ui/button";
 import { Layout } from "./components/Layout";
-import { CockpitLayout } from "./components/CockpitLayout";
 import { CockpitShell } from "./components/cockpit/CockpitShell";
 import { CockpitDrillShell } from "./components/cockpit/CockpitDrillShell";
 import { ControlTower, CockpitMeetings, CockpitHR, CockpitOrg } from "./pages/cockpit";
@@ -273,15 +272,10 @@ export function App() {
         <Route path="tests/perf/long-thread" element={<IssueChatLongThreadPerf />} />
 
         <Route element={<CloudAccessGate />}>
-          {/* Phase 10 — index and legacy dashboard alias both go to /tower.
-              The cockpit is the only entry point. */}
-          <Route index element={<Navigate to="/tower" replace />} />
-          <Route path="dashboard" element={<Navigate to="/tower" replace />} />
-          <Route path="dashboard/live" element={<Navigate to="/tower" replace />} />
-          <Route path="company-root-redirect" element={<CompanyRootRedirect />} />
+          <Route index element={<CompanyRootRedirect />} />
           <Route path="onboarding" element={<OnboardingRoutePage />} />
           <Route path="instance" element={<Navigate to="/instance/settings/general" replace />} />
-          <Route path="instance/settings" element={<CockpitLayout />}>
+          <Route path="instance/settings" element={<Layout />}>
             <Route index element={<Navigate to="general" replace />} />
             <Route path="profile" element={<ProfileSettings />} />
             <Route path="general" element={<InstanceGeneralSettings />} />
@@ -337,7 +331,7 @@ export function App() {
             <Route path="issue/:issueId" element={<IssueDetail />} />
             <Route path="approval/:approvalId" element={<ApprovalDetail />} />
           </Route>
-          <Route path=":companyPrefix" element={<CockpitLayout />}>
+          <Route path=":companyPrefix" element={<Layout />}>
             {boardRoutes()}
           </Route>
           <Route path="*" element={<NotFoundPage scope="global" />} />
