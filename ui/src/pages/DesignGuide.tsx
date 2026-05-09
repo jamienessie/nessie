@@ -124,6 +124,9 @@ import { InlineEditor } from "@/components/InlineEditor";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Identity } from "@/components/Identity";
 import { IssueReferencePill } from "@/components/IssueReferencePill";
+import { listAgentAccents } from "@/lib/agent-color";
+import { SidebarSection } from "@/components/SidebarSection";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /*  Section wrapper                                                    */
@@ -790,6 +793,19 @@ export function DesignGuide() {
             <MetricCard icon={Zap} value="99.9%" label="Uptime" />
           </div>
         </SubSection>
+
+        <SubSection title="Metric Card tones">
+          <p className="text-xs text-muted-foreground">
+            Tone tints the value, the icon, and a top accent strip. Use sparingly — at most one tone per card row.
+          </p>
+          <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-4">
+            <MetricCard tone="neutral" icon={Bot} value={12} label="Neutral" description="Default — no accent" />
+            <MetricCard tone="success" icon={Bot} value={9} label="Agents Enabled" description="Healthy" />
+            <MetricCard tone="info" icon={ListTodo} value={24} label="Tasks In Progress" description="Across the org" />
+            <MetricCard tone="spend" icon={DollarSign} value="$842" label="Month Spend" description="Within budget" />
+            <MetricCard tone="warning" icon={CircleDot} value={3} label="Pending Approvals" description="Awaiting operator" />
+          </div>
+        </SubSection>
       </Section>
 
       {/* ============================================================ */}
@@ -971,6 +987,75 @@ export function DesignGuide() {
       </Section>
 
       {/* ============================================================ */}
+      {/*  AGENT PALETTE                                                */}
+      {/* ============================================================ */}
+      <Section title="Agent Palette">
+        <p className="text-sm text-muted-foreground">
+          Every agent gets a deterministic accent color from{" "}
+          <code className="font-mono text-xs">getAgentAccent(agentId)</code> — used in
+          avatar bubbles, sidebar dots, dashboard card strips, and activity rows.
+          Hash is stable across sessions and machines, so the same agent renders the
+          same color everywhere. Red and green are excluded so accents don't collide
+          with status semantics.
+        </p>
+
+        <SubSection title="Seeded role identities">
+          <p className="text-xs text-muted-foreground">
+            The 10 default human-named identities from{" "}
+            <code className="font-mono text-[10px]">role-templates.ts</code>, each
+            rendered with their accent. Name + title is required everywhere — color
+            is in addition to the label, never instead of it.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+            {[
+              { id: "exec.ceo", name: "Aria Whitfield", title: "CEO" },
+              { id: "exec.cto", name: "Marcus Chen", title: "CTO" },
+              { id: "exec.cmo", name: "Naomi Okafor", title: "CMO" },
+              { id: "exec.cfo", name: "Theo Rashid", title: "CFO" },
+              { id: "hr.head", name: "Lena Park", title: "Head of HR" },
+              { id: "eng.lead", name: "Sofia Reyes", title: "Engineering Lead" },
+              { id: "eng.reviewer", name: "Owen Mackenzie", title: "Senior Reviewer" },
+              { id: "qa.lead", name: "Priya Iyer", title: "QA Lead" },
+              { id: "prod.pm", name: "Maya Lindqvist", title: "Product Manager" },
+              { id: "prod.designer", name: "Felix Romano", title: "Product Designer" },
+            ].map((p) => (
+              <Identity
+                key={p.id}
+                agentId={p.id}
+                name={`${p.name} · ${p.title}`}
+                size="sm"
+              />
+            ))}
+          </div>
+        </SubSection>
+
+        <SubSection title="Palette swatches">
+          <p className="text-xs text-muted-foreground">
+            All 10 palette entries — exposed via{" "}
+            <code className="font-mono text-[10px]">listAgentAccents()</code>. Each
+            entry provides <code className="font-mono text-[10px]">bg / text / ring / soft / border / hex</code>{" "}
+            classes for use in different surfaces.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            {listAgentAccents().map((a, i) => (
+              <div key={a.hex} className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-semibold",
+                    a.bg,
+                    a.text,
+                  )}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="text-[11px] font-mono text-muted-foreground">{a.hex}</span>
+              </div>
+            ))}
+          </div>
+        </SubSection>
+      </Section>
+
+      {/* ============================================================ */}
       {/*  TOOLTIPS                                                     */}
       {/* ============================================================ */}
       <Section title="Tooltips">
@@ -1137,6 +1222,46 @@ export function DesignGuide() {
               <Hexagon className="h-4 w-4" />
               Projects
             </div>
+          </div>
+        </SubSection>
+
+        <SubSection title="Sidebar tones">
+          <p className="text-xs text-muted-foreground">
+            Section labels and the active-state left rail are tinted by tone — Work
+            is sky, Company is violet, Operator is amber. The tinted label turns
+            the sidebar from a flat list into a navigable map without sacrificing
+            information density. Active-row rail color matches the section's tone.
+          </p>
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { tone: "work" as const, label: "Work", icon: ListTodo, item: "My Issues" },
+              { tone: "company" as const, label: "Company", icon: Bot, item: "Agents" },
+              { tone: "operator" as const, label: "Operator", icon: Settings, item: "Settings" },
+            ].map(({ tone, label, icon: Icon, item }) => (
+              <div key={tone} className="w-full border border-border rounded-md p-2 bg-card">
+                <SidebarSection label={label} tone={tone}>
+                  {/* Simulated active nav row — mirrors SidebarNavItem's active-state visuals
+                      without depending on router state. */}
+                  <div
+                    className={cn(
+                      "relative flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium",
+                      "before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r",
+                      "bg-accent text-foreground",
+                      tone === "work" && "before:bg-[var(--tone-work-rail)]",
+                      tone === "company" && "before:bg-[var(--tone-company-rail)]",
+                      tone === "operator" && "before:bg-[var(--tone-operator-rail)]",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 truncate">{item}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-foreground/80 hover:bg-accent/50">
+                    <Icon className="h-4 w-4 shrink-0 opacity-60" />
+                    <span className="flex-1 truncate text-muted-foreground">Other item</span>
+                  </div>
+                </SidebarSection>
+              </div>
+            ))}
           </div>
         </SubSection>
 
