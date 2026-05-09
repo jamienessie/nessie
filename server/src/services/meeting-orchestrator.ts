@@ -249,18 +249,12 @@ export async function runOneTurn(input: {
         else stderr += chunk;
       },
     });
-    let timedOut = false;
     const result = await Promise.race([
       executePromise,
       new Promise<never>((_, reject) =>
-        setTimeout(() => {
-          timedOut = true;
-          reject(new Error(`turn timed out after ${TURN_TIMEOUT_MS / 1000}s`));
-        }, TURN_TIMEOUT_MS),
+        setTimeout(() => reject(new Error(`turn timed out after ${TURN_TIMEOUT_MS / 1000}s`)), TURN_TIMEOUT_MS),
       ),
-    ]).catch((err) => {
-      throw err;
-    });
+    ]);
     if (result.exitCode !== 0) {
       const message = result.errorMessage ?? stderr.trim() ?? `adapter exit ${result.exitCode}`;
       return { ok: false, error: message };
