@@ -51,7 +51,7 @@ export const serverConfigSchema = z.object({
   bind: z.enum(BIND_MODES).optional(),
   customBindHost: z.string().optional(),
   host: z.string().default("127.0.0.1"),
-  port: z.number().int().min(1).max(65535).default(3100),
+  port: z.number().int().min(1).max(65535).default(4100),
   allowedHostnames: z.array(z.string().min(1)).default([]),
   serveUi: z.boolean().default(true),
 });

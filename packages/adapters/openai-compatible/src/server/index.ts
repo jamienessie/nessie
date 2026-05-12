@@ -8,15 +8,17 @@ import type {
 
 // Server-side execution module for the openai-compatible adapter.
 //
-// Wire shape (Phase 1 v1):
-//   - one POST per execute(), no streaming yet
+// Wire shape:
+//   - one POST per execute() with stream: true; tokens are forwarded to
+//     ctx.onLog("stdout", delta) as they arrive
 //   - body is a 1-2 message OpenAI Chat Completions payload built from
 //     systemPrompt + the heartbeat prompt context
-//   - response usage block lifts to AdapterExecutionResult.usage
+//   - final usage block (via stream_options.include_usage) lifts to
+//     AdapterExecutionResult.usage
 //   - costUsd / billingType returned so cost_events can attribute spend
 //
-// Fuller streaming (SSE pass-through), tool-call round-trips, and
-// reviewer-pattern wakeup integrate with heartbeat in Phase 2+.
+// Tool-call round-trips and reviewer-pattern wakeup integrate with
+// heartbeat in a later phase.
 
 const DEFAULT_PROXY_URL = "http://127.0.0.1:7777/v1";
 
@@ -78,7 +80,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     messages,
     temperature: config.temperature ?? 0.2,
     max_tokens: config.maxTokens,
-    stream: false,
+    stream: true,
+    stream_options: { include_usage: true },
   };
 
   const startedAt = Date.now();
@@ -96,34 +99,74 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     return failResult("transport_error", message);
   }
 
-  const latencyMs = Date.now() - startedAt;
-  const text = await res.text();
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    await ctx.onLog("stderr", `non-JSON response from proxy (HTTP ${res.status})\n${text.slice(0, 1000)}\n`);
-    return failResult("non_json", `proxy returned non-JSON, HTTP ${res.status}`);
-  }
-
   if (!res.ok) {
-    const errBody = parsed as { error?: { message?: string; type?: string } };
-    const msg = errBody?.error?.message ?? `HTTP ${res.status}`;
+    const text = await res.text();
+    let errBody: { error?: { message?: string; type?: string } } | undefined;
+    try { errBody = JSON.parse(text) as typeof errBody; } catch { /* non-JSON */ }
+    const msg = errBody?.error?.message ?? (text.slice(0, 1000) || `HTTP ${res.status}`);
     await ctx.onLog("stderr", `proxy ${res.status}: ${msg}\n`);
     return failResult(errBody?.error?.type ?? `http_${res.status}`, msg);
   }
 
-  const completion = parsed as {
-    id?: string;
-    choices?: Array<{ message?: { content?: string }; finish_reason?: string }>;
-    usage?: { prompt_tokens?: number; completion_tokens?: number; cached_input_tokens?: number };
-  };
-  const assistantText = completion.choices?.[0]?.message?.content ?? "";
-  if (assistantText) {
-    await ctx.onLog("stdout", assistantText + "\n");
+  if (!res.body) {
+    return failResult("no_body", "proxy returned 200 with no body");
   }
 
-  const usage = completion.usage ?? {};
+  let completionId: string | null = null;
+  let assistantText = "";
+  let finishReason: string | null = null;
+  let usage: { prompt_tokens?: number; completion_tokens?: number; cached_input_tokens?: number } = {};
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let streamDone = false;
+  try {
+    const reader = res.body.getReader();
+    while (!streamDone) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let sep: number;
+      while ((sep = buffer.indexOf("\n\n")) !== -1) {
+        const event = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        for (const line of event.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") {
+            streamDone = true;
+            break;
+          }
+          let chunk: {
+            id?: string;
+            choices?: Array<{ delta?: { content?: string }; finish_reason?: string | null }>;
+            usage?: typeof usage;
+          };
+          try { chunk = JSON.parse(data); } catch { continue; }
+          if (typeof chunk.id === "string" && !completionId) completionId = chunk.id;
+          const delta = chunk.choices?.[0]?.delta?.content;
+          if (typeof delta === "string" && delta.length > 0) {
+            assistantText += delta;
+            await ctx.onLog("stdout", delta);
+          }
+          const fr = chunk.choices?.[0]?.finish_reason;
+          if (typeof fr === "string") finishReason = fr;
+          if (chunk.usage) usage = chunk.usage;
+        }
+        if (streamDone) break;
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await ctx.onLog("stderr", `proxy stream read failed: ${message}\n`);
+    return failResult("stream_error", message);
+  }
+
+  if (assistantText && !assistantText.endsWith("\n")) {
+    await ctx.onLog("stdout", "\n");
+  }
+
+  const latencyMs = Date.now() - startedAt;
   return {
     exitCode: 0,
     signal: null,
@@ -133,15 +176,15 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       outputTokens: usage.completion_tokens ?? 0,
       cachedInputTokens: usage.cached_input_tokens ?? 0,
     },
-    sessionId: completion.id ?? null,
-    sessionParams: completion.id ? { sessionId: completion.id } : null,
-    sessionDisplayId: completion.id ?? null,
+    sessionId: completionId,
+    sessionParams: completionId ? { sessionId: completionId } : null,
+    sessionDisplayId: completionId,
     provider: "nessie_proxy",
     biller: "nessie_proxy",
     model,
     billingType: "metered_api",
     summary: assistantText.slice(0, 200) || null,
-    resultJson: { latencyMs, finishReason: completion.choices?.[0]?.finish_reason ?? null },
+    resultJson: { latencyMs, finishReason },
   };
 }
 

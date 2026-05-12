@@ -1,4 +1,5 @@
 import type { Db } from "@nessie/db";
+import { issues } from "@nessie/db";
 
 // Meeting write policy.
 //
@@ -45,26 +46,80 @@ export function isOutcomeReadyToApply(
   return state.approvedByOperator;
 }
 
-// Placeholder for the full apply path. Phase 5+ wires this to issue
-// creation, document writes, memory promotion. For now it is a no-op
-// that flips appliedAt.
+export interface ApplyOutcomeContext {
+  companyId: string;
+  meetingId: string;
+  outcomeId: string;
+}
+
+export interface ApplyOutcomeResult {
+  applied: boolean;
+  ref?: string;
+  reason?: string;
+}
+
+function readString(payload: Record<string, unknown>, key: string): string | undefined {
+  const v = payload[key];
+  return typeof v === "string" && v.trim().length > 0 ? v : undefined;
+}
+
+function readPriority(payload: Record<string, unknown>): "low" | "medium" | "high" | "urgent" {
+  const v = payload.priority;
+  return v === "low" || v === "medium" || v === "high" || v === "urgent" ? v : "medium";
+}
+
+// Apply the side effects of an approved outcome. DECIDE is recorded in
+// place (the meeting_outcomes row itself IS the decision record — the
+// caller stamps appliedAt). ACTION and ISSUE materialise a row in
+// `issues`. MEMORY is a deliberate no-op until an institutional_memory
+// table exists (TODO).
 export async function applyOutcomeEffects(
-  _db: Db,
+  db: Db,
   outcome: { kind: MeetingOutcomeKind; payload: Record<string, unknown> },
-): Promise<{ applied: boolean; ref?: string; reason?: string }> {
+  ctx: ApplyOutcomeContext,
+): Promise<ApplyOutcomeResult> {
   switch (outcome.kind) {
-    case "DECIDE":
-      // Phase 6: write to a decision_records table; for now log only.
-      return { applied: true };
+    case "DECIDE": {
+      // The meeting_outcomes row IS the decision record. Caller will
+      // stamp appliedAt + merge appliedRef back into payload.
+      return { applied: true, ref: ctx.outcomeId };
+    }
     case "ACTION":
-      // Phase 5: create an issue from payload; for now log only.
+    case "ISSUE": {
+      const title =
+        readString(outcome.payload, "title") ??
+        readString(outcome.payload, "summary") ??
+        `Meeting ${outcome.kind.toLowerCase()}`;
+      const description =
+        readString(outcome.payload, "bodyMarkdown") ??
+        readString(outcome.payload, "description") ??
+        JSON.stringify(outcome.payload);
+      const assigneeAgentId =
+        outcome.kind === "ACTION" ? readString(outcome.payload, "ownerAgentId") : undefined;
+      const [issueRow] = await db
+        .insert(issues)
+        .values({
+          companyId: ctx.companyId,
+          title,
+          description,
+          status: "backlog",
+          priority: readPriority(outcome.payload),
+          assigneeAgentId: assigneeAgentId ?? undefined,
+          originKind: "meeting_outcome",
+          originId: ctx.outcomeId,
+        })
+        .returning();
+      if (!issueRow) {
+        return { applied: false, reason: "issue_insert_returned_empty" };
+      }
+      return { applied: true, ref: issueRow.id };
+    }
+    case "MEMORY": {
+      // TODO: promote into institutional memory once an
+      // `institutional_memory` table exists. For now this returns
+      // applied=true so the meeting can advance, but no row is written.
       return { applied: true };
-    case "ISSUE":
-      // Phase 5: create the proposed issue; for now log only.
-      return { applied: true };
-    case "MEMORY":
-      // Phase 7: promote into institutional memory; for now log only.
-      return { applied: true };
+    }
     default:
       return { applied: false, reason: "unknown_outcome_kind" };
   }

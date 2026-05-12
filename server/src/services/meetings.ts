@@ -337,9 +337,12 @@ export class MeetingsService {
     return updated;
   }
 
-  // Apply ready outcomes for a meeting. Phase 5+ wires real effects;
-  // for now this just stamps appliedAt.
+  // Apply ready outcomes for a meeting: fire real side-effects (issue
+  // creation for ACTION/ISSUE, decision-record commit for DECIDE) and
+  // stamp appliedAt + appliedRef on each row.
   async applyReadyOutcomes(meetingId: string): Promise<{ applied: number; skipped: number }> {
+    const meeting = await this.getById(meetingId);
+    if (!meeting) return { applied: 0, skipped: 0 };
     const rows = await this.listOutcomes(meetingId);
     let applied = 0;
     let skipped = 0;
@@ -353,14 +356,25 @@ export class MeetingsService {
         skipped += 1;
         continue;
       }
-      const result = await applyOutcomeEffects(this.db, {
-        kind: row.kind as MeetingOutcomeKind,
-        payload: row.payload,
-      });
+      const result = await applyOutcomeEffects(
+        this.db,
+        {
+          kind: row.kind as MeetingOutcomeKind,
+          payload: row.payload,
+        },
+        {
+          companyId: meeting.companyId,
+          meetingId,
+          outcomeId: row.id,
+        },
+      );
       if (result.applied) {
+        const mergedPayload = result.ref
+          ? { ...row.payload, appliedRef: result.ref }
+          : row.payload;
         await this.db
           .update(meetingOutcomes)
-          .set({ appliedAt: new Date(), updatedAt: new Date() })
+          .set({ appliedAt: new Date(), updatedAt: new Date(), payload: mergedPayload })
           .where(eq(meetingOutcomes.id, row.id));
         applied += 1;
       } else {

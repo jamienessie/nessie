@@ -1529,11 +1529,10 @@ export function pluginLoader(
      * @returns A promise that resolves with summary statistics of the load operation.
      */
     async loadAll(): Promise<PluginLoadAllResult> {
-      // Nessie ships with the plugin system gated off in v1. Set
-      // NESSIE_DISABLE_PLUGINS=0 to opt back in (intended only for
-      // development of the plugin subsystem itself).
-      if (process.env.NESSIE_DISABLE_PLUGINS !== "0") {
-        log.info("plugin-loader: skipping load (gated off by Nessie default)");
+      // Plugins load by default. Set NESSIE_DISABLE_PLUGINS=1 to skip
+      // loading (e.g. when debugging the plugin subsystem itself).
+      if (process.env.NESSIE_DISABLE_PLUGINS === "1") {
+        log.info("plugin-loader: skipping load (NESSIE_DISABLE_PLUGINS=1)");
         return { total: 0, succeeded: 0, failed: 0, results: [] };
       }
 
