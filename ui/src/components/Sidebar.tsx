@@ -172,6 +172,7 @@ export function Sidebar() {
           <SidebarNavItem to="/bus" label="Bus" swatchColor="#22C2A4" />
           <SidebarNavItem to="/black-box" label="Black Box" swatchColor="#0d0c10" />
           <SidebarNavItem to="/trust-receipts" label="Trust Receipts" swatchColor="#27D17F" />
+          <SidebarNavItem to="/arena" label="Arena" swatchColor="#1FA7FF" />
         </SidebarSection>
 
         <PluginSlotOutlet

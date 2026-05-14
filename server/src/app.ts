@@ -234,6 +234,10 @@ export async function createApp(
   api.use(inboxItemsRoutes(db));
   api.use(operatorConstitutionRoutes(db));
   api.use(trustReceiptsRoutes(db));
+  // Model Arena (§20.6). Standalone fan-out of a prompt across N
+  // candidate models, judged by a single LLM call, with leaderboard rollup.
+  const { arenaRoutes } = await import("./routes/arena.js");
+  api.use(arenaRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

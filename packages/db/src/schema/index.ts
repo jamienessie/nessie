@@ -74,6 +74,8 @@ export { reputationEvents } from "./reputation_events.js";
 export { inboxItems } from "./inbox_items.js";
 export { operatorConstitution, operatorConstitutionVersions } from "./operator_constitution.js";
 export { trustReceipts } from "./trust_receipts.js";
+export { arenaRuns } from "./arena_runs.js";
+export { arenaResults } from "./arena_results.js";
 export { financeEvents } from "./finance_events.js";
 export { approvals } from "./approvals.js";
 export { approvalComments } from "./approval_comments.js";
