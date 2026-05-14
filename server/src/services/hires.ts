@@ -9,6 +9,7 @@ import {
   departments,
 } from "@nessie/db";
 import { ROLE_TEMPLATES } from "../onboarding-assets/role-templates.js";
+import { blackBoxRecorder } from "./black-box.js";
 
 // HR pipeline service.
 //
@@ -353,6 +354,22 @@ export class HiresService {
         .set({ status: "hired", updatedAt: new Date() })
         .where(eq(hires.id, input.hireId));
 
+      return agent;
+    }).then(async (agent) => {
+      // Forensic snapshot: who got minted, from which hire / candidate, at
+      // what tier. Recorded outside the tx so an audit write failure can't
+      // roll back the mint itself.
+      await blackBoxRecorder(this.db).record({
+        scope: "hire",
+        scopeId: input.hireId,
+        label: "agent_minted",
+        snapshot: {
+          candidateId: input.candidateId,
+          agentId: agent.id,
+          finalTier: input.finalTier,
+          finalAdapterType: input.finalAdapterType,
+        },
+      });
       return agent;
     });
   }

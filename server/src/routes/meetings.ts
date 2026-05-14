@@ -3,6 +3,8 @@ import type { Db } from "@nessie/db";
 import { meetingsService, type MeetingMode, type MeetingState } from "../services/meetings.js";
 import type { MeetingOutcomeKind } from "../services/meeting-write-policy.js";
 import { cancelAutoLoop, startAutoLoop } from "../services/meeting-orchestrator.js";
+import { logActivity } from "../services/activity-log.js";
+import { getActorInfo } from "./authz.js";
 
 // Meetings REST surface.
 //
@@ -102,6 +104,17 @@ export function meetingRoutes(db: Db): Router {
           ? (body.participants as Array<{ agentId: string; role?: string }>)
           : undefined,
       });
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "meeting.created",
+        entityType: "meeting",
+        entityId: meeting.id,
+        details: { title: meeting.title, mode: meeting.mode },
+      });
       res.status(201).json({ meeting });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -121,7 +134,9 @@ export function meetingRoutes(db: Db): Router {
       return;
     }
     try {
-      const meeting = await svc.transition(companyId, paramId(req, "id"), to);
+      const meetingId = paramId(req, "id");
+      const before = await svc.getById(meetingId);
+      const meeting = await svc.transition(companyId, meetingId, to);
       // Lifecycle hooks: kick the auto-loop on entry to `active`, cancel it
       // on any other transition (so paused / synthesizing / completed all
       // halt outstanding agent turns).
@@ -130,6 +145,17 @@ export function meetingRoutes(db: Db): Router {
       } else {
         cancelAutoLoop(meeting.id);
       }
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "meeting.transitioned",
+        entityType: "meeting",
+        entityId: meeting.id,
+        details: { from: before?.state ?? null, to },
+      });
       res.json({ meeting });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -151,7 +177,24 @@ export function meetingRoutes(db: Db): Router {
     }
     const role = pickString(body.role) ?? "panel";
     const speaker = agentId ? { agentId } : { candidateId: candidateId! };
-    const created = await svc.addParticipant(paramId(req, "id"), speaker, role);
+    const meetingId = paramId(req, "id");
+    const created = await svc.addParticipant(meetingId, speaker, role);
+    if (created) {
+      const meeting = await svc.getById(meetingId);
+      if (meeting) {
+        const actor = getActorInfo(req);
+        await logActivity(db, {
+          companyId: meeting.companyId,
+          actorType: actor.actorType,
+          actorId: actor.actorId,
+          agentId: actor.agentId,
+          action: "meeting.participant_added",
+          entityType: "meeting_participant",
+          entityId: created.id,
+          details: { meetingId, role, agentId, candidateId },
+        });
+      }
+    }
     res.status(created ? 201 : 200).json({ participant: created });
   });
 
@@ -163,8 +206,9 @@ export function meetingRoutes(db: Db): Router {
       res.status(400).json({ error: "bodyMarkdown and role required" });
       return;
     }
+    const meetingId = paramId(req, "id");
     const message = await svc.addMessage({
-      meetingId: paramId(req, "id"),
+      meetingId,
       agentId: pickString(body.agentId),
       role,
       bodyMarkdown,
@@ -173,6 +217,20 @@ export function meetingRoutes(db: Db): Router {
         : undefined,
       costCents: typeof body.costCents === "number" ? body.costCents : undefined,
     });
+    const meeting = await svc.getById(meetingId);
+    if (meeting) {
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId: meeting.companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "meeting.message_appended",
+        entityType: "meeting_message",
+        entityId: message.id,
+        details: { meetingId, role, turnIndex: message.turnIndex, costCents: message.costCents },
+      });
+    }
     res.status(201).json({ message });
   });
 
@@ -186,7 +244,22 @@ export function meetingRoutes(db: Db): Router {
     const payload = (body.payload && typeof body.payload === "object" && !Array.isArray(body.payload)
       ? (body.payload as Record<string, unknown>)
       : {});
-    const outcome = await svc.addOutcome({ meetingId: paramId(req, "id"), kind, payload });
+    const meetingId = paramId(req, "id");
+    const outcome = await svc.addOutcome({ meetingId, kind, payload });
+    const meeting = await svc.getById(meetingId);
+    if (meeting) {
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId: meeting.companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "meeting.outcome_proposed",
+        entityType: "meeting_outcome",
+        entityId: outcome.id,
+        details: { meetingId, kind },
+      });
+    }
     res.status(201).json({ outcome });
   });
 
@@ -196,11 +269,40 @@ export function meetingRoutes(db: Db): Router {
       res.status(404).json({ error: "outcome not found" });
       return;
     }
+    const meeting = await svc.getById(outcome.meetingId);
+    if (meeting) {
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId: meeting.companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "meeting.outcome_approved",
+        entityType: "meeting_outcome",
+        entityId: outcome.id,
+        details: { meetingId: outcome.meetingId, kind: outcome.kind },
+      });
+    }
     res.json({ outcome });
   });
 
   router.post("/meetings/:id/apply-outcomes", async (req: Request, res: Response) => {
-    const result = await svc.applyReadyOutcomes(paramId(req, "id"));
+    const meetingId = paramId(req, "id");
+    const result = await svc.applyReadyOutcomes(meetingId);
+    const meeting = await svc.getById(meetingId);
+    if (meeting) {
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId: meeting.companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "meeting.outcomes_applied",
+        entityType: "meeting",
+        entityId: meetingId,
+        details: result,
+      });
+    }
     res.json(result);
   });
 

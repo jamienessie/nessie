@@ -81,6 +81,7 @@ import {
   type RunLivenessClassificationInput,
 } from "./run-liveness.js";
 import { logActivity, publishPluginDomainEvent, type LogActivityInput } from "./activity-log.js";
+import { blackBoxRecorder } from "./black-box.js";
 import {
   buildWorkspaceReadyComment,
   cleanupExecutionWorkspaceArtifacts,
@@ -3759,6 +3760,28 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         finishedAt: run.finishedAt ? new Date(run.finishedAt).toISOString() : null,
       },
     });
+    // Phase 6: forensic snapshot keyed by run id. Fire-and-forget so a
+    // black-box write failure can't break the run lifecycle.
+    const label = run.status === "running" ? "started"
+      : run.status === "succeeded" ? "finished"
+      : run.status === "failed" || run.status === "timed_out" ? "failed"
+      : run.status === "cancelled" ? "cancelled"
+      : null;
+    if (label) {
+      void blackBoxRecorder(db).record({
+        scope: "run",
+        scopeId: run.id,
+        label,
+        snapshot: {
+          agentId: run.agentId,
+          status: run.status,
+          invocationSource: run.invocationSource,
+          errorCode: run.errorCode ?? null,
+        },
+      }).catch((err) => {
+        console.warn(`[heartbeat] black-box record failed for run ${run.id}:`, err);
+      });
+    }
   }
 
   async function setWakeupStatus(

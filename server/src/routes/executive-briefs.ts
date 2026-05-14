@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import type { Db } from "@nessie/db";
 import { executiveBriefsService, type BriefPeriod } from "../services/executive-briefs.js";
+import { logActivity } from "../services/activity-log.js";
+import { getActorInfo } from "./authz.js";
 
 function pickString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -25,6 +27,17 @@ export function executiveBriefRoutes(db: Db): Router {
       return;
     }
     const brief = await svc.compose(period, companyId);
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      action: "executive_brief.generated",
+      entityType: "executive_brief",
+      entityId: `${period}:${brief.range.fromIso}`,
+      details: { period, range: brief.range, sectionCount: brief.sections.length },
+    });
     res.status(201).json({ brief });
   });
 

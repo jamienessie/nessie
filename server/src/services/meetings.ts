@@ -13,6 +13,7 @@ import {
   type MeetingOutcomeKind,
 } from "./meeting-write-policy.js";
 import { publishLiveEvent } from "./live-events.js";
+import { blackBoxRecorder } from "./black-box.js";
 
 // Meetings service.
 //
@@ -165,6 +166,12 @@ export class MeetingsService {
       companyId,
       type: "meeting.transitioned",
       payload: { meetingId, from, to, meeting: updated },
+    });
+    await blackBoxRecorder(this.db).record({
+      scope: "meeting",
+      scopeId: meetingId,
+      label: "transitioned",
+      snapshot: { from, to },
     });
     return updated;
   }
@@ -331,6 +338,12 @@ export class MeetingsService {
           companyId: meeting.companyId,
           type: "meeting.outcome.approved",
           payload: { meetingId: updated.meetingId, outcome: updated },
+        });
+        await blackBoxRecorder(this.db).record({
+          scope: "meeting",
+          scopeId: updated.meetingId,
+          label: "outcome_approved",
+          snapshot: { outcomeId: updated.id, kind: updated.kind },
         });
       }
     }
