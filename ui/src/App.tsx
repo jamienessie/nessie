@@ -39,6 +39,11 @@ import { MeetingRoom } from "./pages/MeetingRoom";
 import { TrustLayer } from "./pages/TrustLayer";
 import { ChiefOfStaff } from "./pages/ChiefOfStaff";
 import { Briefs } from "./pages/Briefs";
+import InboxCapture from "./pages/InboxCapture";
+import BusInspector from "./pages/BusInspector";
+import BlackBox from "./pages/BlackBox";
+import TrustReceipts from "./pages/TrustReceipts";
+import Reputation from "./pages/Reputation";
 import { PlugInJanitor } from "./pages/PlugInJanitor";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanyEnvironments } from "./pages/CompanyEnvironments";
@@ -144,6 +149,11 @@ function boardRoutes() {
       <Route path="trust-layer" element={<TrustLayer />} />
       <Route path="chief-of-staff" element={<ChiefOfStaff />} />
       <Route path="briefs" element={<Briefs />} />
+      <Route path="inbox-capture" element={<InboxCapture />} />
+      <Route path="bus" element={<BusInspector />} />
+      <Route path="black-box" element={<BlackBox />} />
+      <Route path="trust-receipts" element={<TrustReceipts />} />
+      <Route path="agents/:agentId/reputation" element={<Reputation />} />
       <Route path="plug-in-janitor" element={<PlugInJanitor />} />
       <Route path="inbox" element={<InboxRootRedirect />} />
       <Route path="inbox/mine" element={<Inbox />} />

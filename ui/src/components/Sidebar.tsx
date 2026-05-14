@@ -28,6 +28,7 @@ import { SidebarAgents } from "./SidebarAgents";
 import { useDialogActions } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { heartbeatsApi } from "../api/heartbeats";
+import { useInvalidateOnLiveEvent } from "../hooks/useInvalidateOnLiveEvent";
 import { instanceSettingsApi } from "../api/instanceSettings";
 import { queryKeys } from "../lib/queryKeys";
 import { useInboxBadge } from "../hooks/useInboxBadge";
@@ -44,11 +45,20 @@ export function Sidebar() {
     queryKey: queryKeys.instance.experimentalSettings,
     queryFn: () => instanceSettingsApi.getExperimental(),
   });
+  const liveRunsKey = selectedCompanyId ? queryKeys.liveRuns(selectedCompanyId) : ["liveRuns", "none"];
   const { data: liveRuns } = useQuery({
-    queryKey: queryKeys.liveRuns(selectedCompanyId!),
+    queryKey: liveRunsKey,
     queryFn: () => heartbeatsApi.liveRunsForCompany(selectedCompanyId!),
     enabled: !!selectedCompanyId,
-    refetchInterval: 10_000,
+  });
+  // Replace 10s polling with WS-driven invalidation. Server publishes
+  // heartbeat.run.* on every run lifecycle change.
+  useInvalidateOnLiveEvent({
+    companyId: selectedCompanyId ?? null,
+    mapping: {
+      "heartbeat.run.queued": [liveRunsKey],
+      "heartbeat.run.status": [liveRunsKey],
+    },
   });
   const liveRunCount = liveRuns?.length ?? 0;
   const showWorkspacesLink = experimentalSettings?.enableIsolatedWorkspaces === true;
@@ -151,6 +161,7 @@ export function Sidebar() {
         <SidebarSection label="OPERATOR">
           <SidebarNavItem to="/chief-of-staff" label="Chief of Staff" swatchColor="#FF6B9A" />
           <SidebarNavItem to="/briefs" label="Briefs" swatchColor="#FFB400" />
+          <SidebarNavItem to="/inbox-capture" label="Capture" swatchColor="#7C5CFF" />
           <SidebarNavItem to="/dreams" label="Dream Journal" swatchColor="#7C5CFF" />
           <SidebarNavItem to="/companies/generate" label="Generate Company" swatchColor="#FFC83A" />
           <SidebarNavItem to="/clipmart" label="ClipMart" swatchColor="#1FA7FF" />
@@ -158,6 +169,9 @@ export function Sidebar() {
           <SidebarNavItem to="/hiring" label="Hiring" swatchColor="#5B8DEF" />
           <SidebarNavItem to="/meetings" label="Meetings" swatchColor="#B872FF" />
           <SidebarNavItem to="/trust-layer" label="Trust Layer" swatchColor="#22C2A4" />
+          <SidebarNavItem to="/bus" label="Bus" swatchColor="#22C2A4" />
+          <SidebarNavItem to="/black-box" label="Black Box" swatchColor="#0d0c10" />
+          <SidebarNavItem to="/trust-receipts" label="Trust Receipts" swatchColor="#27D17F" />
         </SidebarSection>
 
         <PluginSlotOutlet

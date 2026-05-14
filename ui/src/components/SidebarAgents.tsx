@@ -13,6 +13,7 @@ import { useCompany } from "../context/CompanyContext";
 import { useDialogActions } from "../context/DialogContext";
 import { useSidebar } from "../context/SidebarContext";
 import { useToastActions } from "../context/ToastContext";
+import { useInvalidateOnLiveEvent } from "../hooks/useInvalidateOnLiveEvent";
 import { agentsApi } from "../api/agents";
 import { authApi } from "../api/auth";
 import { heartbeatsApi } from "../api/heartbeats";
@@ -166,8 +167,10 @@ export function SidebarAgents() {
   const { pushToast } = useToastActions();
   const location = useLocation();
 
+  const agentsListKey = selectedCompanyId ? queryKeys.agents.list(selectedCompanyId) : ["agents", "none"];
+  const liveRunsKey = selectedCompanyId ? queryKeys.liveRuns(selectedCompanyId) : ["liveRuns", "none"];
   const { data: agents } = useQuery({
-    queryKey: queryKeys.agents.list(selectedCompanyId!),
+    queryKey: agentsListKey,
     queryFn: () => agentsApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
   });
@@ -177,10 +180,19 @@ export function SidebarAgents() {
   });
 
   const { data: liveRuns } = useQuery({
-    queryKey: queryKeys.liveRuns(selectedCompanyId!),
+    queryKey: liveRunsKey,
     queryFn: () => heartbeatsApi.liveRunsForCompany(selectedCompanyId!),
     enabled: !!selectedCompanyId,
-    refetchInterval: 10_000,
+  });
+  // Replace 10s polling with WS-driven invalidation. agent.status fires
+  // on pause/resume/error; heartbeat.run.* fires on every run lifecycle.
+  useInvalidateOnLiveEvent({
+    companyId: selectedCompanyId ?? null,
+    mapping: {
+      "agent.status": [agentsListKey],
+      "heartbeat.run.queued": [liveRunsKey],
+      "heartbeat.run.status": [liveRunsKey],
+    },
   });
 
   const liveCountByAgent = useMemo(() => {

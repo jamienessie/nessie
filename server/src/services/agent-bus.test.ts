@@ -4,15 +4,23 @@ import type { Db } from "@nessie/db";
 
 type InsertedRow = Record<string, unknown>;
 
-function makeStubDb(): { db: Db; lastInsert: () => InsertedRow | null; lastUpdatePatch: () => Record<string, unknown> | null } {
-  let lastInsertValues: InsertedRow | null = null;
+function makeStubDb(): {
+  db: Db;
+  inserts: () => InsertedRow[];
+  primaryInsert: () => InsertedRow | null;
+  siblingInsert: () => InsertedRow | null;
+  lastUpdatePatch: () => Record<string, unknown> | null;
+} {
+  const allInserts: InsertedRow[] = [];
   let lastUpdateValues: Record<string, unknown> | null = null;
+  let id = 0;
   const stub = {
     insert: vi.fn(() => ({
       values: (vals: InsertedRow) => {
-        lastInsertValues = vals;
+        id += 1;
+        allInserts.push(vals);
         return {
-          returning: async () => [{ id: "msg-1", ...vals }],
+          returning: async () => [{ id: `msg-${id}`, ...vals }],
         };
       },
     })),
@@ -29,14 +37,16 @@ function makeStubDb(): { db: Db; lastInsert: () => InsertedRow | null; lastUpdat
   } as unknown as Db;
   return {
     db: stub,
-    lastInsert: () => lastInsertValues,
+    inserts: () => allInserts,
+    primaryInsert: () => allInserts[0] ?? null,
+    siblingInsert: () => allInserts[1] ?? null,
     lastUpdatePatch: () => lastUpdateValues,
   };
 }
 
 describe("AgentBusService.send rewrap", () => {
   it("rewraps disallowed-at-level kinds into operator_approval_request", async () => {
-    const { db, lastInsert } = makeStubDb();
+    const { db, primaryInsert: lastInsert } = makeStubDb();
     const svc = new AgentBusService(db);
     await svc.send({
       companyId: "co-1",
@@ -53,7 +63,7 @@ describe("AgentBusService.send rewrap", () => {
   });
 
   it("rewraps approval-required kinds even when level allows sending", async () => {
-    const { db, lastInsert } = makeStubDb();
+    const { db, primaryInsert: lastInsert } = makeStubDb();
     const svc = new AgentBusService(db);
     await svc.send({
       companyId: "co-1",
@@ -67,14 +77,14 @@ describe("AgentBusService.send rewrap", () => {
   });
 
   it("rewraps budget_request at L3 (below L4)", async () => {
-    const { db, lastInsert } = makeStubDb();
+    const { db, primaryInsert: lastInsert } = makeStubDb();
     const svc = new AgentBusService(db);
     await svc.send({ companyId: "co-1", kind: "budget_request", payload: {}, senderAutonomyLevel: 3 });
     expect(lastInsert()!.kind).toBe("operator_approval_request");
   });
 
   it("does not rewrap budget_request at L4", async () => {
-    const { db, lastInsert } = makeStubDb();
+    const { db, primaryInsert: lastInsert } = makeStubDb();
     const svc = new AgentBusService(db);
     await svc.send({ companyId: "co-1", kind: "budget_request", payload: { amount: 100 }, senderAutonomyLevel: 4 });
     const row = lastInsert()!;
@@ -83,7 +93,7 @@ describe("AgentBusService.send rewrap", () => {
   });
 
   it("passes kind through verbatim when senderAutonomyLevel is omitted", async () => {
-    const { db, lastInsert } = makeStubDb();
+    const { db, primaryInsert: lastInsert } = makeStubDb();
     const svc = new AgentBusService(db);
     await svc.send({ companyId: "co-1", kind: "hiring_request", payload: { x: 1 } });
     const row = lastInsert()!;
@@ -92,7 +102,7 @@ describe("AgentBusService.send rewrap", () => {
   });
 
   it("inserts at status=pending with the provided ids", async () => {
-    const { db, lastInsert } = makeStubDb();
+    const { db, primaryInsert: lastInsert } = makeStubDb();
     const svc = new AgentBusService(db);
     await svc.send({
       companyId: "co-1",
@@ -106,6 +116,39 @@ describe("AgentBusService.send rewrap", () => {
     expect(row.status).toBe("pending");
     expect(row.fromAgentId).toBe("a-from");
     expect(row.toAgentId).toBe("a-to");
+  });
+
+  it("emits a sibling policy_check row when rewrap fires", async () => {
+    const { db, inserts, siblingInsert } = makeStubDb();
+    const svc = new AgentBusService(db);
+    await svc.send({
+      companyId: "co-1",
+      fromAgentId: "a-from",
+      kind: "hiring_request",
+      payload: { roleTitle: "Engineer" },
+      senderAutonomyLevel: 0,
+    });
+    expect(inserts()).toHaveLength(2);
+    const sibling = siblingInsert()!;
+    expect(sibling.kind).toBe("policy_check");
+    const payload = sibling.payload as Record<string, unknown>;
+    expect(payload.originalKind).toBe("hiring_request");
+    expect(typeof payload.reason).toBe("string");
+    expect(typeof payload.wrappedMessageId).toBe("string");
+    expect(sibling.toAgentId).toBeNull();
+    expect(sibling.parentMessageId).toBe(payload.wrappedMessageId);
+  });
+
+  it("does not emit a sibling row when no rewrap happens", async () => {
+    const { db, inserts } = makeStubDb();
+    const svc = new AgentBusService(db);
+    await svc.send({
+      companyId: "co-1",
+      kind: "review_request",
+      payload: {},
+      senderAutonomyLevel: 5,
+    });
+    expect(inserts()).toHaveLength(1);
   });
 });
 

@@ -10,6 +10,7 @@ import {
 } from "@nessie/db";
 import { ROLE_TEMPLATES } from "../onboarding-assets/role-templates.js";
 import { blackBoxRecorder } from "./black-box.js";
+import { sendFromOperator } from "./agent-bus-helpers.js";
 
 // HR pipeline service.
 //
@@ -169,6 +170,14 @@ export class HiresService {
       .set({ status: to, updatedAt: new Date() })
       .where(and(eq(hires.companyId, companyId), eq(hires.id, hireId)))
       .returning();
+    if (to === "recommended") {
+      await sendFromOperator(this.db, companyId, {
+        kind: "hiring_request",
+        payload: { hireId, fromState: from, title: hire.title },
+      }).catch((err) => {
+        console.warn(`[hires] hiring_request bus enqueue failed for ${hireId}:`, err);
+      });
+    }
     return updated;
   }
 

@@ -13,7 +13,13 @@ interface HttpWebhookConfig {
   headers?: Record<string, string>;
   timeoutMs?: number;
   healthUrl?: string;
+  /** Override the proxy base URL. Defaults to NESSIE_PROXY_URL env or DEFAULT_PROXY_URL. */
+  proxyUrl?: string;
+  /** Set to false to bypass the cost-tier proxy and call the upstream URL directly. */
+  routeThroughProxy?: boolean;
 }
+
+const DEFAULT_PROXY_URL = "http://127.0.0.1:7777/v1";
 
 function readConfig(raw: unknown): HttpWebhookConfig {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
@@ -28,7 +34,42 @@ function readConfig(raw: unknown): HttpWebhookConfig {
         : undefined,
     timeoutMs: typeof obj.timeoutMs === "number" ? obj.timeoutMs : undefined,
     healthUrl: typeof obj.healthUrl === "string" ? obj.healthUrl : undefined,
+    proxyUrl: typeof obj.proxyUrl === "string" ? obj.proxyUrl : undefined,
+    routeThroughProxy: typeof obj.routeThroughProxy === "boolean" ? obj.routeThroughProxy : undefined,
   };
+}
+
+interface ResolvedTarget {
+  fetchUrl: string;
+  headers: Record<string, string>;
+}
+
+/**
+ * Decide whether to call the upstream webhook URL directly or route the
+ * request through the cost-tier proxy on `${proxy}/webhook`. Mirrors the
+ * pattern used by openai-compatible (which routes through the proxy by
+ * default). Without this, T2/T3 webhook spend is invisible because the
+ * proxy is what writes to cost_events.
+ */
+function resolveExecuteTarget(
+  config: HttpWebhookConfig,
+  baseHeaders: Record<string, string>,
+  bearer: string | null,
+): ResolvedTarget {
+  const upstreamUrl = config.url!;
+  const headers: Record<string, string> = { ...baseHeaders };
+  const useProxy = config.routeThroughProxy !== false;
+  if (useProxy) {
+    const proxyBase = (config.proxyUrl ?? process.env.NESSIE_PROXY_URL ?? DEFAULT_PROXY_URL).replace(/\/+$/, "");
+    headers["x-nessie-upstream-url"] = upstreamUrl;
+    if (bearer) {
+      headers["x-nessie-upstream-authorization"] = `Bearer ${bearer}`;
+      delete headers["authorization"];
+    }
+    return { fetchUrl: `${proxyBase}/webhook`, headers };
+  }
+  if (bearer) headers["authorization"] = `Bearer ${bearer}`;
+  return { fetchUrl: upstreamUrl, headers };
 }
 
 function resolveBearer(config: HttpWebhookConfig): string | null {
@@ -45,7 +86,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     return failResult("missing_url", "http_webhook adapter requires `url` on adapterConfig");
   }
 
-  const headers: Record<string, string> = {
+  const baseHeaders: Record<string, string> = {
     "content-type": "application/json",
     "x-nessie-agent-id": ctx.agent.id,
     "x-nessie-company-id": ctx.agent.companyId,
@@ -53,7 +94,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     ...(config.headers ?? {}),
   };
   const bearer = resolveBearer(config);
-  if (bearer) headers["authorization"] = `Bearer ${bearer}`;
+  const target = resolveExecuteTarget(config, baseHeaders, bearer);
 
   const body = {
     runId: ctx.runId,
@@ -65,9 +106,9 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const startedAt = Date.now();
   let res: Response;
   try {
-    res = await fetch(config.url, {
+    res = await fetch(target.fetchUrl, {
       method: "POST",
-      headers,
+      headers: target.headers,
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(config.timeoutMs ?? 60_000),
     });

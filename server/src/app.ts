@@ -228,8 +228,12 @@ export async function createApp(
   const { trustLayerRoutes } = await import("./routes/trust-layer.js");
   api.use(trustLayerRoutes(db));
   // Phase 7 starter pack: Inbox, Operator Constitution, Trust Receipts.
-  const { v0_8Routes } = await import("./routes/v0_8.js");
-  api.use(v0_8Routes(db));
+  const { inboxItemsRoutes } = await import("./routes/inbox-items.js");
+  const { operatorConstitutionRoutes } = await import("./routes/operator-constitution.js");
+  const { trustReceiptsRoutes } = await import("./routes/trust-receipts.js");
+  api.use(inboxItemsRoutes(db));
+  api.use(operatorConstitutionRoutes(db));
+  api.use(trustReceiptsRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

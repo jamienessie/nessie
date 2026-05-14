@@ -4,7 +4,7 @@ import multer from "multer";
 import { z } from "zod";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@nessie/db";
-import { activityLog, executionWorkspaces, issueExecutionDecisions, projectWorkspaces } from "@nessie/db";
+import { activityLog, agents, executionWorkspaces, issueExecutionDecisions, projectWorkspaces } from "@nessie/db";
 import {
   addIssueCommentSchema,
   acceptIssueThreadInteractionSchema,
@@ -97,6 +97,7 @@ import {
   redactIssueMonitorExternalRef,
   setIssueExecutionPolicyMonitorScheduledBy,
 } from "../services/issue-execution-policy.js";
+import { sendAsAgent, sendFromOperator } from "../services/agent-bus-helpers.js";
 import { parseIssueExecutionWorkspaceSettings } from "../services/execution-workspace-policy.js";
 import type { PluginWorkerManager } from "../services/plugin-worker-manager.js";
 
@@ -2862,6 +2863,44 @@ export function issueRoutes(
     if (actor.runId) {
       await heartbeat.reportRunActivity(actor.runId).catch((err) =>
         logger.warn({ err, runId: actor.runId }, "failed to clear detached run warning after issue activity"));
+    }
+
+    // W1: when an issue lands in_review and the new assignee is an agent
+    // (i.e. the reviewer pattern fires), enqueue a review_request bus
+    // message so Phase 2's reviewer pattern is bridged into Phase 6's bus.
+    if (
+      existing.status !== "in_review" &&
+      issue.status === "in_review" &&
+      issue.assigneeAgentId
+    ) {
+      const busInput = {
+        kind: "review_request" as const,
+        toAgentId: issue.assigneeAgentId,
+        payload: {
+          issueId: issue.id,
+          fromStatus: existing.status,
+          reviewRequest: (issue.executionState as { reviewRequest?: unknown } | null)?.reviewRequest ?? null,
+        },
+      };
+      try {
+        if (actor.actorType === "agent" && actor.agentId) {
+          const senderRows = await db
+            .select({ id: agents.id, companyId: agents.companyId, autonomyLevel: agents.autonomyLevel })
+            .from(agents)
+            .where(eq(agents.id, actor.agentId))
+            .limit(1);
+          const sender = senderRows[0];
+          if (sender) {
+            await sendAsAgent(db, sender, busInput);
+          } else {
+            await sendFromOperator(db, issue.companyId, busInput);
+          }
+        } else {
+          await sendFromOperator(db, issue.companyId, busInput);
+        }
+      } catch (err) {
+        logger.warn({ err, issueId: issue.id }, "failed to enqueue review_request bus message");
+      }
     }
 
     // Build activity details with previous values for changed fields
