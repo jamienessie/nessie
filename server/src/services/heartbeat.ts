@@ -82,6 +82,7 @@ import {
 } from "./run-liveness.js";
 import { logActivity, publishPluginDomainEvent, type LogActivityInput } from "./activity-log.js";
 import { coachingNotesService } from "./coaching-notes.js";
+import { resolveAutoRoutedModel } from "./auto-router.js";
 import { blackBoxRecorder } from "./black-box.js";
 import {
   buildWorkspaceReadyComment,
@@ -7636,19 +7637,36 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       // guidance every run. Adapters that don't read systemPrompt
       // (claude_local, codex_local) ignore the field harmlessly.
       const coachingPrefix = await coachingNotesService(db).assemblePrefix(agent.companyId, agent.id);
+      // Auto-Router: if runtimeConfig.autoRouter === true, consult the
+      // Arena leaderboard for the agent's role and override
+      // adapterConfig.model with the proven winner. Fails closed (keeps
+      // configured model) on any mismatch — see auto-router.ts.
+      const routed = await resolveAutoRoutedModel(db, {
+        id: agent.id,
+        companyId: agent.companyId,
+        role: agent.role,
+        runtimeConfig: agent.runtimeConfig as Record<string, unknown> | null,
+        adapterConfig: tieredAgent.adapterConfig as Record<string, unknown> | null,
+        tier: (agent as { tier?: string | null }).tier ?? null,
+      });
+      const tieredAdapterConfig = (tieredAgent.adapterConfig as Record<string, unknown> | null | undefined) ?? {};
+      const baseAdapterConfig: Record<string, unknown> =
+        routed.source === "leaderboard" && routed.model
+          ? { ...tieredAdapterConfig, model: routed.model, autoRouterApplied: routed.reason }
+          : tieredAdapterConfig;
       const agentForExecute = coachingPrefix
         ? {
             ...tieredAgent,
             adapterConfig: {
-              ...((tieredAgent.adapterConfig as Record<string, unknown> | null | undefined) ?? {}),
+              ...baseAdapterConfig,
               systemPrompt: (() => {
-                const existing = (tieredAgent.adapterConfig as Record<string, unknown> | null | undefined)?.systemPrompt;
+                const existing = baseAdapterConfig.systemPrompt;
                 const existingStr = typeof existing === "string" ? existing : "";
                 return existingStr ? `${coachingPrefix}\n${existingStr}` : coachingPrefix;
               })(),
             },
           }
-        : tieredAgent;
+        : { ...tieredAgent, adapterConfig: baseAdapterConfig };
       const adapterResult = await adapter.execute({
         runId: run.id,
         agent: agentForExecute,

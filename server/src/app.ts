@@ -246,6 +246,11 @@ export async function createApp(
   // across Arena Compose, agent instructions editor, Replay Lab.
   const { snippetsRoutes } = await import("./routes/snippets.js");
   api.use(snippetsRoutes(db));
+  // Auto-Router — closes the Arena loop. Heartbeat dispatch consults the
+  // leaderboard to override the agent's configured model with the proven
+  // winner. Preview endpoint exposed here.
+  const { autoRouterRoutes } = await import("./routes/auto-router.js");
+  api.use(autoRouterRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");
