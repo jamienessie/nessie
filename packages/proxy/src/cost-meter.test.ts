@@ -38,7 +38,10 @@ const baseCred: CredentialView = {
   status: "active",
   monthlyCapCents: null,
   monthlySpentCents: 0,
-  capabilities: {},
+  dailyRequestCap: null,
+  dailyRequestCount: 0,
+  dailyResetAt: null,
+  capabilities: [],
 };
 
 describe("recordCost", () => {

@@ -12,6 +12,9 @@ type Row = {
   status: string;
   monthlyCapCents: number | null;
   monthlySpentCents: number;
+  dailyRequestCap?: number | null;
+  dailyRequestCount?: number;
+  dailyResetAt?: Date | null;
   capabilities: Record<string, unknown>;
 };
 
@@ -34,6 +37,9 @@ const baseRow: Row = {
   status: "active",
   monthlyCapCents: null,
   monthlySpentCents: 0,
+  dailyRequestCap: null,
+  dailyRequestCount: 0,
+  dailyResetAt: null,
   capabilities: {},
 };
 
@@ -82,6 +88,34 @@ describe("pickCredential", () => {
       status: "active",
     });
   });
+
+  it("Quota Watchdog: skips credentials at or above their daily request cap", async () => {
+    const future = new Date(Date.now() + 60 * 60 * 1000);
+    const db = makeDbWithRows([
+      { ...baseRow, id: "capped", dailyRequestCap: 200, dailyRequestCount: 200, dailyResetAt: future, monthlySpentCents: 10 },
+      { ...baseRow, id: "fresh", dailyRequestCap: 200, dailyRequestCount: 0, dailyResetAt: future, monthlySpentCents: 50 },
+    ]);
+    const picked = await pickCredential(db, "T2");
+    expect(picked?.id).toBe("fresh");
+  });
+
+  it("Quota Watchdog: a credential past its daily reset window is treated as fresh", async () => {
+    const past = new Date(Date.now() - 60 * 60 * 1000);
+    const db = makeDbWithRows([
+      { ...baseRow, id: "rolled", dailyRequestCap: 200, dailyRequestCount: 200, dailyResetAt: past, monthlySpentCents: 5 },
+    ]);
+    const picked = await pickCredential(db, "T2");
+    expect(picked?.id).toBe("rolled");
+  });
+
+  it("Quota Watchdog: respects excludeCredentialIds for rotation", async () => {
+    const db = makeDbWithRows([
+      { ...baseRow, id: "first", monthlySpentCents: 0 },
+      { ...baseRow, id: "second", monthlySpentCents: 100 },
+    ]);
+    const picked = await pickCredential(db, "T2", { excludeCredentialIds: ["first"] });
+    expect(picked?.id).toBe("second");
+  });
 });
 
 describe("resolveSecret", () => {
@@ -94,7 +128,10 @@ describe("resolveSecret", () => {
     status: "active",
     monthlyCapCents: null,
     monthlySpentCents: 0,
-    capabilities: {},
+    dailyRequestCap: null,
+    dailyRequestCount: 0,
+    dailyResetAt: null,
+    capabilities: [],
   };
 
   it("returns the env var value when set", () => {

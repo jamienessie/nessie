@@ -30,6 +30,9 @@ export type CredentialView = {
   status: CredentialStatus;
   monthlyCapCents: number | null;
   monthlySpentCents: number;
+  dailyRequestCap: number | null;
+  dailyRequestCount: number;
+  dailyResetAt: Date | null;
   capabilities: string[];
 };
 

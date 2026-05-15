@@ -1,6 +1,7 @@
 import { type Express, type Request, type Response, type NextFunction, default as express } from "express";
 import type { Db } from "@nessie/db";
 import { pickProvider, resolveRequestedTier, stripTierPrefix } from "./router.js";
+import { markExhausted, recordDailyRequest } from "./credentials.js";
 import { recordCost } from "./cost-meter.js";
 import { resolveTosAwareness } from "./tos-dial.js";
 import {
@@ -112,77 +113,116 @@ async function handleChatCompletion(db: Db, req: Request, res: Response): Promis
 
   const operatorTriggered = req.header("x-nessie-operator-triggered")?.toLowerCase() === "true";
 
-  const pick = await pickProvider(db, {
-    tier,
-    modelAlias: body?.model ?? null,
-    operatorTriggered,
-  });
+  // Quota Watchdog: try up to MAX_TIER_ROTATIONS credentials of the
+  // requested tier. If the first credential 429s, mark it exhausted and
+  // rotate to the next eligible one. Bounded so a tier-wide outage
+  // surfaces to the agent quickly instead of looping.
+  const MAX_TIER_ROTATIONS = 3;
+  const exhaustedIds: string[] = [];
+  let lastError: { type: string; tier: string; message?: string } | null = null;
 
-  if (!pick.ok) {
-    const status = pick.reason === "tos_blocked" ? 451 : 503;
-    res.status(status).json({
-      error: {
-        type: pick.reason,
-        tier: pick.tier,
-        message: pick.message ?? `No ${pick.tier} credential available.`,
-      },
+  for (let attempt = 0; attempt < MAX_TIER_ROTATIONS; attempt += 1) {
+    const pick = await pickProvider(db, {
+      tier,
+      modelAlias: body?.model ?? null,
+      operatorTriggered,
+      excludeCredentialIds: exhaustedIds,
     });
+
+    if (!pick.ok) {
+      const status = pick.reason === "tos_blocked" ? 451 : 503;
+      res.status(status).json({
+        error: {
+          type: pick.reason,
+          tier: pick.tier,
+          message: pick.message ?? `No ${pick.tier} credential available.`,
+          ...(exhaustedIds.length > 0
+            ? { rotated: exhaustedIds.length, lastUpstreamError: lastError ?? undefined }
+            : {}),
+        },
+      });
+      return;
+    }
+
+    const { target, secret } = pick;
+    const upstreamModel = target.upstreamModel || stripTierPrefix(body.model ?? "");
+    if (!target.upstreamUrl) {
+      res.status(501).json({
+        error: {
+          type: "provider_not_supported_in_phase_0",
+          provider: target.credential.provider,
+          message: `Provider '${target.credential.provider}' needs the per-provider adapter in Phase 1.`,
+        },
+      });
+      return;
+    }
+
+    const upstreamBody = { ...body, model: upstreamModel };
+    if (body.stream) upstreamBody.stream = false;
+
+    const upstreamRes = await fetch(`${target.upstreamUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify(upstreamBody),
+    });
+
+    // 429 → mark this credential exhausted and rotate.
+    if (upstreamRes.status === 429) {
+      await markExhausted(db, target.credential.id);
+      exhaustedIds.push(target.credential.id);
+      lastError = {
+        type: "rate_limited",
+        tier,
+        message: `Credential '${target.credential.displayName}' returned 429.`,
+      };
+      continue;
+    }
+
+    const text = await upstreamRes.text();
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      res.status(502).json({
+        error: {
+          type: "upstream_non_json",
+          message: `Upstream ${target.credential.provider} returned non-JSON (HTTP ${upstreamRes.status}).`,
+        },
+      });
+      return;
+    }
+
+    if (upstreamRes.ok) {
+      // Quota Watchdog: count this request against the credential's daily cap.
+      void recordDailyRequest(db, target.credential.id);
+    }
+
+    const usage = (parsed as { usage?: { prompt_tokens?: number; completion_tokens?: number; cached_input_tokens?: number } })?.usage;
+
+    await recordCost(db, {
+      credential: target.credential,
+      tier,
+      model: upstreamModel,
+      usage,
+      agentId: req.header(NESSIE_AGENT_HEADER) ?? null,
+      companyId: req.header(NESSIE_COMPANY_HEADER) ?? null,
+      heartbeatRunId: req.header(NESSIE_HEARTBEAT_HEADER) ?? null,
+    });
+
+    res.status(upstreamRes.status).json(parsed);
     return;
   }
 
-  const { target, secret } = pick;
-  const upstreamModel = target.upstreamModel || stripTierPrefix(body.model ?? "");
-  if (!target.upstreamUrl) {
-    res.status(501).json({
-      error: {
-        type: "provider_not_supported_in_phase_0",
-        provider: target.credential.provider,
-        message: `Provider '${target.credential.provider}' needs the per-provider adapter in Phase 1.`,
-      },
-    });
-    return;
-  }
-
-  // Forward to upstream (OpenAI-compatible only in Phase 0). Streaming is
-  // accepted but currently buffered; SSE pass-through lands with the
-  // openai-compatible adapter.
-  const upstreamBody = { ...body, model: upstreamModel };
-  if (body.stream) upstreamBody.stream = false;
-
-  const upstreamRes = await fetch(`${target.upstreamUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${secret}`,
+  // All MAX_TIER_ROTATIONS credentials returned 429.
+  res.status(503).json({
+    error: {
+      type: "tier_rate_limited",
+      tier,
+      message: `${exhaustedIds.length} ${tier} credentials rate-limited; tier exhausted.`,
+      rotated: exhaustedIds.length,
     },
-    body: JSON.stringify(upstreamBody),
   });
-
-  const text = await upstreamRes.text();
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    res.status(502).json({
-      error: {
-        type: "upstream_non_json",
-        message: `Upstream ${target.credential.provider} returned non-JSON (HTTP ${upstreamRes.status}).`,
-      },
-    });
-    return;
-  }
-
-  const usage = (parsed as { usage?: { prompt_tokens?: number; completion_tokens?: number; cached_input_tokens?: number } })?.usage;
-
-  await recordCost(db, {
-    credential: target.credential,
-    tier,
-    model: upstreamModel,
-    usage,
-    agentId: req.header(NESSIE_AGENT_HEADER) ?? null,
-    companyId: req.header(NESSIE_COMPANY_HEADER) ?? null,
-    heartbeatRunId: req.header(NESSIE_HEARTBEAT_HEADER) ?? null,
-  });
-
-  res.status(upstreamRes.status).json(parsed);
 }

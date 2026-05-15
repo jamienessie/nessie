@@ -53,6 +53,10 @@ export type PickProviderInput = {
   // in the UI) and bypasses Conservative-mode T1 gating.
   operatorTriggered?: boolean;
   env?: NodeJS.ProcessEnv;
+  // Quota Watchdog: when an upstream call returns 429 the proxy retries
+  // with a sibling credential. Pass the set of already-tried credential
+  // ids so the same credential isn't picked again.
+  excludeCredentialIds?: string[];
 };
 
 export type PickProviderResult =
@@ -82,7 +86,9 @@ export async function pickProvider(
     }
   }
 
-  const credential = await pickCredential(db, input.tier);
+  const credential = await pickCredential(db, input.tier, {
+    excludeCredentialIds: input.excludeCredentialIds,
+  });
   if (!credential) {
     return { ok: false, reason: "no_credential", tier: input.tier };
   }

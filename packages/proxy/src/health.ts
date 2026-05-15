@@ -42,6 +42,9 @@ export function startHealthMonitor(
           status: row.status as CredentialView["status"],
           monthlyCapCents: row.monthlyCapCents,
           monthlySpentCents: row.monthlySpentCents,
+          dailyRequestCap: row.dailyRequestCap,
+          dailyRequestCount: row.dailyRequestCount,
+          dailyResetAt: row.dailyResetAt,
           capabilities: row.capabilities,
         });
       }
