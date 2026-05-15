@@ -261,6 +261,10 @@ export async function createApp(
   // the original on the /replay Cockpit page.
   const { replayLabRoutes } = await import("./routes/replay-lab.js");
   api.use(replayLabRoutes(db));
+  // Time Travel Inspector — reconstruct past Cockpit state by replaying
+  // activity_log + black_box_records snapshots up to a chosen timestamp.
+  const { timeTravelRoutes } = await import("./routes/time-travel.js");
+  api.use(timeTravelRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");
