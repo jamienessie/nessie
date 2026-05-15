@@ -33,6 +33,14 @@ function qs(params: Record<string, string | undefined>): string {
   return s ? `?${s}` : "";
 }
 
+export interface ReplaySource {
+  originalRunId: string;
+  model: string | null;
+  systemPrompt: string | null;
+  promptHint: string;
+  promptHintFrom: "contextSnapshot" | "stdout_excerpt" | null;
+}
+
 export const replayLabApi = {
   create: (input: {
     companyId: string;
@@ -48,5 +56,9 @@ export const replayLabApi = {
   get: (id: string, companyId: string) =>
     api.get<{ replay: ReplayRun; original: { id: string; resultJson: unknown } | null }>(
       `/replay/runs/${encodeURIComponent(id)}${qs({ companyId })}`,
+    ),
+  source: (runId: string, companyId: string) =>
+    api.get<{ source: ReplaySource }>(
+      `/replay/source/${encodeURIComponent(runId)}${qs({ companyId })}`,
     ),
 };

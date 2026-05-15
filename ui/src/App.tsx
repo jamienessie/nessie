@@ -49,6 +49,7 @@ import CoachingNotes from "./pages/CoachingNotes";
 import Snippets from "./pages/Snippets";
 import ReplayLab from "./pages/ReplayLab";
 import TimeTravel from "./pages/TimeTravel";
+import AgentBehaviors from "./pages/AgentBehaviors";
 import { PlugInJanitor } from "./pages/PlugInJanitor";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanyEnvironments } from "./pages/CompanyEnvironments";
@@ -164,6 +165,7 @@ function boardRoutes() {
       <Route path="time-travel" element={<TimeTravel />} />
       <Route path="agents/:agentId/reputation" element={<Reputation />} />
       <Route path="agents/:agentId/coaching" element={<CoachingNotes />} />
+      <Route path="agents/:agentId/behaviors" element={<AgentBehaviors />} />
       <Route path="plug-in-janitor" element={<PlugInJanitor />} />
       <Route path="inbox" element={<InboxRootRedirect />} />
       <Route path="inbox/mine" element={<Inbox />} />

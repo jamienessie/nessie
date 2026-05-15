@@ -265,6 +265,11 @@ export async function createApp(
   // activity_log + black_box_records snapshots up to a chosen timestamp.
   const { timeTravelRoutes } = await import("./routes/time-travel.js");
   api.use(timeTravelRoutes(db));
+  // Agent Behaviors — per-agent toggles for the next-up runtimeConfig
+  // flags (Auto-Router, Pre-Flight, Self-Critic, Consensus). Avoids
+  // forcing the operator to hand-edit JSON on the agent config form.
+  const { agentBehaviorsRoutes } = await import("./routes/agent-behaviors.js");
+  api.use(agentBehaviorsRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

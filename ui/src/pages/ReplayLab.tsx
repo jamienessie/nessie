@@ -27,6 +27,37 @@ export default function ReplayLab() {
   const [draftSystemPrompt, setDraftSystemPrompt] = useState("");
   const [originalRunId, setOriginalRunId] = useState("");
   const [selectedReplayId, setSelectedReplayId] = useState<string | null>(null);
+  const [sourceLoadError, setSourceLoadError] = useState<string | null>(null);
+
+  // Auto-prefill from the original heartbeat run when the operator
+  // pastes / picks a runId. Best-effort: model + systemPrompt come from
+  // the agent's current adapterConfig; the prompt hint comes from the
+  // run's contextSnapshot or stdoutExcerpt.
+  useEffect(() => {
+    if (!companyId) return;
+    const trimmed = originalRunId.trim();
+    if (!trimmed) {
+      setSourceLoadError(null);
+      return;
+    }
+    let cancelled = false;
+    setSourceLoadError(null);
+    replayLabApi
+      .source(trimmed, companyId)
+      .then(({ source }) => {
+        if (cancelled) return;
+        if (source.model && SUPPORTED_ARENA_MODELS.includes(source.model as never)) {
+          setDraftModel(source.model);
+        }
+        if (source.systemPrompt) setDraftSystemPrompt(source.systemPrompt);
+        if (source.promptHint) setDraftPrompt(source.promptHint);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSourceLoadError(err instanceof Error ? err.message : "source not found");
+      });
+    return () => { cancelled = true; };
+  }, [originalRunId, companyId]);
 
   useEffect(() => {
     setBreadcrumbs([{ label: "Replay" }]);
@@ -99,7 +130,7 @@ export default function ReplayLab() {
             </label>
             <label className="flex flex-col gap-1">
               <span className="font-mono uppercase tracking-wider text-muted-foreground">
-                original heartbeat run id (optional)
+                original heartbeat run id (optional · auto-prefills)
               </span>
               <input
                 type="text"
@@ -108,6 +139,9 @@ export default function ReplayLab() {
                 placeholder="uuid"
                 className="rounded-md border bg-background px-2 py-1.5 font-mono text-[11px]"
               />
+              {sourceLoadError && (
+                <span className="text-[10px] text-rose-700">{sourceLoadError}</span>
+              )}
             </label>
             <label className="flex flex-col gap-1">
               <span className="font-mono uppercase tracking-wider text-muted-foreground">

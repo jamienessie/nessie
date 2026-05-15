@@ -60,6 +60,21 @@ export function replayLabRoutes(db: Db): Router {
     }
   });
 
+  router.get("/replay/source/:runId", async (req: Request, res: Response) => {
+    const companyId = pickCompanyId(req);
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+    assertCompanyAccess(req, companyId);
+    const source = await svc.source(paramId(req, "runId"), companyId);
+    if (!source) {
+      res.status(404).json({ error: "heartbeat run not found" });
+      return;
+    }
+    res.json({ source });
+  });
+
   router.get("/replay/runs", async (req: Request, res: Response) => {
     const companyId = pickCompanyId(req);
     if (!companyId) {

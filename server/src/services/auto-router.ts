@@ -70,22 +70,37 @@ export async function resolveAutoRoutedModel(
     return { model: configured ?? "", source: "configured", reason: "auto_router_disabled" };
   }
 
-  const taskType = (agent.role ?? "general").trim() || "general";
-  const board = await arenaService(db).leaderboard(agent.companyId, { taskType });
-  if (board.length === 0) {
-    return { model: configured ?? "", source: "configured", reason: "no_leaderboard_data" };
-  }
-  const winner = board[0];
-  if (winner.wins < MIN_WINS) {
-    return { model: configured ?? "", source: "configured", reason: `winner_below_min_wins(${winner.wins})` };
-  }
   const expectedTier = agentTierPrefix(agent);
-  if (expectedTier && tierPrefix(winner.model) !== expectedTier) {
+  const arena = arenaService(db);
+
+  // Fallback chain: try the agent's role as taskType, then a generic
+  // "general" bucket, then company-wide (no taskType filter). This
+  // ensures auto-routing fires even when the operator's Arenas weren't
+  // tagged with the agent's role string. First leaderboard entry that
+  // passes the tier and MIN_WINS gates wins.
+  const role = (agent.role ?? "general").trim() || "general";
+  const probes: Array<{ label: string; opts: { taskType?: string } }> = [
+    { label: `role(${role})`, opts: { taskType: role } },
+  ];
+  if (role !== "general") {
+    probes.push({ label: "role(general)", opts: { taskType: "general" } });
+  }
+  probes.push({ label: "company_wide", opts: {} });
+
+  for (const probe of probes) {
+    const board = await arena.leaderboard(agent.companyId, probe.opts);
+    const eligible = expectedTier
+      ? board.filter((entry) => tierPrefix(entry.model) === expectedTier)
+      : board;
+    if (eligible.length === 0) continue;
+    const winner = eligible[0];
+    if (winner.wins < MIN_WINS) continue;
     return {
-      model: configured ?? "",
-      source: "configured",
-      reason: `winner_tier_mismatch(${winner.model})`,
+      model: winner.model,
+      source: "leaderboard",
+      reason: `${probe.label}_wins(${winner.wins})`,
     };
   }
-  return { model: winner.model, source: "leaderboard", reason: `winner_wins(${winner.wins})` };
+
+  return { model: configured ?? "", source: "configured", reason: "no_leaderboard_match" };
 }

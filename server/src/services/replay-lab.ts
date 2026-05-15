@@ -8,7 +8,7 @@
 
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@nessie/db";
-import { heartbeatRuns, replayRuns } from "@nessie/db";
+import { agents, heartbeatRuns, replayRuns } from "@nessie/db";
 import { logActivity } from "./activity-log.js";
 
 const PROXY_BASE = process.env.PAPERCLIP_PROXY_URL?.trim() || "http://127.0.0.1:7777";
@@ -74,10 +74,22 @@ export interface ReplayInput {
   fetchImpl?: typeof fetch;
 }
 
+export interface ReplaySource {
+  originalRunId: string;
+  model: string | null;
+  systemPrompt: string | null;
+  promptHint: string;
+  promptHintFrom: "contextSnapshot" | "stdout_excerpt" | null;
+}
+
 export interface ReplayLabService {
   replay(input: ReplayInput): Promise<ReplayRun>;
   list(companyId: string, opts?: { limit?: number }): Promise<ReplayRun[]>;
   get(replayId: string, companyId: string): Promise<{ replay: ReplayRun; original: { id: string; resultJson: unknown } | null } | null>;
+  /** Best-effort extract of replay inputs from a past heartbeat run so the
+   *  Cockpit can pre-fill the form. Returns null if the run isn't in the
+   *  caller's company. */
+  source(originalRunId: string, companyId: string): Promise<ReplaySource | null>;
 }
 
 interface OpenAiShape {
@@ -219,6 +231,45 @@ export function replayLabService(db: Db): ReplayLabService {
         .orderBy(desc(replayRuns.createdAt))
         .limit(opts?.limit ?? 50);
       return rows.map(toReplay);
+    },
+
+    async source(originalRunId, companyId) {
+      const rows = await db
+        .select({
+          id: heartbeatRuns.id,
+          companyId: heartbeatRuns.companyId,
+          contextSnapshot: heartbeatRuns.contextSnapshot,
+          stdoutExcerpt: heartbeatRuns.stdoutExcerpt,
+          adapterConfig: agents.adapterConfig,
+        })
+        .from(heartbeatRuns)
+        .leftJoin(agents, eq(agents.id, heartbeatRuns.agentId))
+        .where(eq(heartbeatRuns.id, originalRunId))
+        .limit(1);
+      const row = rows[0];
+      if (!row || row.companyId !== companyId) return null;
+      const adapterConfig = (row.adapterConfig ?? {}) as Record<string, unknown>;
+      const model = typeof adapterConfig.model === "string" ? adapterConfig.model : null;
+      const systemPrompt = typeof adapterConfig.systemPrompt === "string"
+        ? adapterConfig.systemPrompt
+        : null;
+      let promptHint = "";
+      let promptHintFrom: ReplaySource["promptHintFrom"] = null;
+      const ctx = row.contextSnapshot as Record<string, unknown> | null;
+      if (ctx && typeof ctx.prompt === "string" && ctx.prompt.trim()) {
+        promptHint = ctx.prompt;
+        promptHintFrom = "contextSnapshot";
+      } else if (typeof row.stdoutExcerpt === "string" && row.stdoutExcerpt.trim()) {
+        promptHint = row.stdoutExcerpt;
+        promptHintFrom = "stdout_excerpt";
+      }
+      return {
+        originalRunId: row.id,
+        model,
+        systemPrompt,
+        promptHint,
+        promptHintFrom,
+      };
     },
 
     async get(replayId, companyId) {

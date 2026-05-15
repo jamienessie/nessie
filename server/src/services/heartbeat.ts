@@ -7636,9 +7636,14 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         : agent;
       // Coaching Notes: any operator-curated active notes get prepended
       // to the agent's systemPrompt so cheap models re-receive standing
-      // guidance every run. Adapters that don't read systemPrompt
-      // (claude_local, codex_local) ignore the field harmlessly.
+      // guidance every run. For adapters that don't read systemPrompt
+      // (claude_local, codex_local), the same prefix is also stamped on
+      // runtimeConfig.coachingPrefix and surfaced via context.coachingPrefix
+      // so adapter-specific bundle assemblers can pick it up.
       const coachingPrefix = await coachingNotesService(db).assemblePrefix(agent.companyId, agent.id);
+      if (coachingPrefix) {
+        (context as Record<string, unknown>).coachingPrefix = coachingPrefix;
+      }
       // Auto-Router: if runtimeConfig.autoRouter === true, consult the
       // Arena leaderboard for the agent's role and override
       // adapterConfig.model with the proven winner. Fails closed (keeps
@@ -7659,6 +7664,10 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       const agentForExecute = coachingPrefix
         ? {
             ...tieredAgent,
+            runtimeConfig: {
+              ...((tieredAgent.runtimeConfig as Record<string, unknown> | null | undefined) ?? {}),
+              coachingPrefix,
+            },
             adapterConfig: {
               ...baseAdapterConfig,
               systemPrompt: (() => {

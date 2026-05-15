@@ -104,3 +104,94 @@ describe("replayLabService.replay", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("replayLabService.source", () => {
+  function makeSourceDb(rows: unknown[]) {
+    return {
+      select: vi.fn(() => ({
+        from: () => ({
+          leftJoin: () => ({
+            where: () => ({
+              limit: async () => rows,
+            }),
+          }),
+        }),
+      })),
+    } as unknown as import("@nessie/db").Db;
+  }
+
+  it("returns null when the run is not in the requesting company", async () => {
+    const svc = replayLabService(
+      makeSourceDb([
+        {
+          id: "run-1",
+          companyId: "other-co",
+          contextSnapshot: null,
+          stdoutExcerpt: null,
+          adapterConfig: { model: "t3:x" },
+        },
+      ]),
+    );
+    expect(await svc.source("run-1", "co-1")).toBeNull();
+  });
+
+  it("returns null when the run doesn't exist", async () => {
+    const svc = replayLabService(makeSourceDb([]));
+    expect(await svc.source("missing", "co-1")).toBeNull();
+  });
+
+  it("prefers contextSnapshot.prompt as the prompt hint when available", async () => {
+    const svc = replayLabService(
+      makeSourceDb([
+        {
+          id: "run-1",
+          companyId: "co-1",
+          contextSnapshot: { prompt: "the original prompt" },
+          stdoutExcerpt: "stdout fallback",
+          adapterConfig: { model: "t3:llama", systemPrompt: "be terse" },
+        },
+      ]),
+    );
+    const source = await svc.source("run-1", "co-1");
+    expect(source).not.toBeNull();
+    expect(source!.model).toBe("t3:llama");
+    expect(source!.systemPrompt).toBe("be terse");
+    expect(source!.promptHint).toBe("the original prompt");
+    expect(source!.promptHintFrom).toBe("contextSnapshot");
+  });
+
+  it("falls back to stdoutExcerpt when contextSnapshot has no prompt", async () => {
+    const svc = replayLabService(
+      makeSourceDb([
+        {
+          id: "run-1",
+          companyId: "co-1",
+          contextSnapshot: { other: "data" },
+          stdoutExcerpt: "stdout fallback",
+          adapterConfig: { model: "t3:llama" },
+        },
+      ]),
+    );
+    const source = await svc.source("run-1", "co-1");
+    expect(source!.promptHint).toBe("stdout fallback");
+    expect(source!.promptHintFrom).toBe("stdout_excerpt");
+  });
+
+  it("returns empty promptHint when neither source has anything useful", async () => {
+    const svc = replayLabService(
+      makeSourceDb([
+        {
+          id: "run-1",
+          companyId: "co-1",
+          contextSnapshot: null,
+          stdoutExcerpt: null,
+          adapterConfig: null,
+        },
+      ]),
+    );
+    const source = await svc.source("run-1", "co-1");
+    expect(source!.promptHint).toBe("");
+    expect(source!.promptHintFrom).toBeNull();
+    expect(source!.model).toBeNull();
+  });
+});
