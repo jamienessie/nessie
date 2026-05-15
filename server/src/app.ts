@@ -251,6 +251,11 @@ export async function createApp(
   // winner. Preview endpoint exposed here.
   const { autoRouterRoutes } = await import("./routes/auto-router.js");
   api.use(autoRouterRoutes(db));
+  // Bus Auto-Reply Rules — operator-defined rule engine that auto-handles
+  // specific bus message shapes (dismiss / auto_reply) before the
+  // operator inbox renders them.
+  const { busAutoReplyRulesRoutes } = await import("./routes/bus-auto-reply-rules.js");
+  api.use(busAutoReplyRulesRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

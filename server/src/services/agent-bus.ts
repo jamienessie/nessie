@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@nessie/db";
 import { agentBusMessages } from "@nessie/db";
 import { canSendBusKindAtLevel, requiresOperatorApproval } from "./agent-permissions.js";
+import { busAutoReplyRulesService } from "./bus-auto-reply-rules.js";
 
 // Agent Bus service. Plan §19. Typed message layer between agents and
 // to/from the operator.
@@ -95,6 +96,35 @@ export class AgentBusService {
           parentMessageId: created.id,
           status: "pending",
         });
+    }
+    // Auto-Reply Rules: evaluate operator-defined rules against the
+    // freshly inserted message. If a rule matches, apply its action
+    // (dismiss / auto_reply) before the operator inbox renders.
+    const rule = await busAutoReplyRulesService(this.db).evaluate(input.companyId, {
+      kind,
+      fromAgentId: input.fromAgentId ?? null,
+      payload,
+    });
+    if (rule) {
+      const now = new Date();
+      const patch: Record<string, unknown> = {
+        status: rule.action === "dismiss" ? "dismissed" : "replied",
+        updatedAt: now,
+        payload: { ...payload, autoReplyRuleId: rule.id, autoReplyRuleName: rule.name },
+      };
+      if (rule.action === "auto_reply") patch.repliedAt = now;
+      await this.db.update(agentBusMessages).set(patch).where(eq(agentBusMessages.id, created.id));
+      if (rule.action === "auto_reply" && rule.replyTemplate) {
+        await this.db.insert(agentBusMessages).values({
+          companyId: input.companyId,
+          fromAgentId: null,
+          toAgentId: input.fromAgentId ?? null,
+          kind: "handoff",
+          payload: { ...rule.replyTemplate, autoReplyRuleId: rule.id, replyTo: created.id },
+          parentMessageId: created.id,
+          status: "delivered",
+        });
+      }
     }
     return created;
   }

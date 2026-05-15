@@ -27,12 +27,21 @@ function makeStubDb(): {
     update: vi.fn(() => ({
       set: (vals: Record<string, unknown>) => {
         lastUpdateValues = vals;
-        return {
-          where: () => ({
-            returning: async () => [{ id: "msg-1", ...vals }],
-          }),
+        const whereResult = {
+          returning: async () => [{ id: "msg-1", ...vals }],
+          then: (resolve: (v: unknown[]) => unknown) => Promise.resolve([]).then(resolve),
         };
+        return { where: () => whereResult };
       },
+    })),
+    // Bus auto-reply rules evaluator does select().from().where().orderBy().
+    // Stub returns no rules so behavior matches existing tests.
+    select: vi.fn(() => ({
+      from: () => ({
+        where: () => ({
+          orderBy: async () => [],
+        }),
+      }),
     })),
   } as unknown as Db;
   return {
