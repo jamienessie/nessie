@@ -242,6 +242,10 @@ export async function createApp(
   // prepended to the agent's system prompt at heartbeat dispatch time.
   const { coachingNotesRoutes } = await import("./routes/coaching-notes.js");
   api.use(coachingNotesRoutes(db));
+  // Snippet Library — versioned operator-curated prompt snippets reusable
+  // across Arena Compose, agent instructions editor, Replay Lab.
+  const { snippetsRoutes } = await import("./routes/snippets.js");
+  api.use(snippetsRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");
