@@ -4,23 +4,35 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    ".": "./src/index.ts",
+    "./server": "./src/server/index.ts",
+    "./ui": "./src/ui/index.ts",
+    "./cli": "./src/cli/index.ts",
+    "./ui-parser": "./src/ui-parser.js"
+  },
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./server": {
+        "types": "./dist/server/index.d.ts",
+        "import": "./dist/server/index.js"
+      },
+      "./ui": {
+        "types": "./dist/ui/index.d.ts",
+        "import": "./dist/ui/index.js"
+      },
+      "./cli": {
+        "types": "./dist/cli/index.d.ts",
+        "import": "./dist/cli/index.js"
+      },
+      "./ui-parser": "./dist/ui-parser.js"
     },
-    "./server": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.js"
-    },
-    "./ui": {
-      "types": "./dist/ui/index.d.ts",
-      "import": "./dist/ui/index.js"
-    },
-    "./cli": {
-      "types": "./dist/cli/index.d.ts",
-      "import": "./dist/cli/index.js"
-    },
-    "./ui-parser": "./dist/ui-parser.js"
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts"
   },
   "paperclip": {
     "adapterUiParser": "1.0.0"

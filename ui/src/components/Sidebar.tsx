@@ -125,6 +125,7 @@ export function Sidebar() {
 
         <SidebarSection label="WORK">
           <SidebarNavItem to="/issues" label="Issues" swatchColor="#FFC83A" />
+          <SidebarNavItem to="/issues/mine" label="My issues" swatchColor="#FFC83A" />
           <SidebarNavItem to="/routines" label="Routines" swatchColor="#27D17F" />
           <SidebarNavItem to="/goals" label="Goals" swatchColor="#1FA7FF" />
           {showWorkspacesLink ? (

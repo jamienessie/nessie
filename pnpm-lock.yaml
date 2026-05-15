@@ -669,6 +669,9 @@ importers:
       '@nessie/adapter-utils':
         specifier: workspace:*
         version: link:../packages/adapter-utils
+      '@nessie/adapter-windsurf-local':
+        specifier: workspace:*
+        version: link:../packages/adapters/windsurf-local
       '@nessie/db':
         specifier: workspace:*
         version: link:../packages/db
@@ -832,6 +835,9 @@ importers:
       '@nessie/adapter-utils':
         specifier: workspace:*
         version: link:../packages/adapter-utils
+      '@nessie/adapter-windsurf-local':
+        specifier: workspace:*
+        version: link:../packages/adapters/windsurf-local
       '@nessie/shared':
         specifier: workspace:*
         version: link:../packages/shared

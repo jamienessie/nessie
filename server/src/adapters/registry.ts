@@ -44,6 +44,7 @@ import {
   models as openCodeLocalModels,
   modelProfiles as openCodeLocalModelProfiles,
 } from "@nessie/adapter-opencode-local";
+import { createServerAdapter as createWindsurfLocalAdapter } from "@nessie/adapter-windsurf-local";
 import {
   execute as openAiCompatibleExecute,
   testEnvironment as openAiCompatibleTestEnvironment,
@@ -195,6 +196,13 @@ const openCodeLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openCodeLocalAgentConfigurationDoc,
 };
 
+const windsurfLocalAdapterBase = createWindsurfLocalAdapter();
+const windsurfLocalAdapter: ServerAdapterModule = {
+  ...windsurfLocalAdapterBase,
+  sessionManagement:
+    getAdapterSessionManagement("windsurf_local") ?? windsurfLocalAdapterBase.sessionManagement,
+};
+
 const openAiCompatibleAdapter: ServerAdapterModule = {
   type: "openai_compatible",
   execute: openAiCompatibleExecute,
@@ -282,7 +290,7 @@ const builtinFallbacks = new Map<string, ServerAdapterModule>();
 const pausedOverrides = new Set<string>();
 
 function registerBuiltInAdapters() {
-  // Nessie Phase 1 catalog: five builtin agent adapters plus the two
+  // Nessie Phase 1 catalog: builtin agent adapters plus the two
   // adapter-plugin transports (process / http). Other Paperclip adapters
   // (cursor / gemini_local / acpx / pi / openclaw-gateway / hermes)
   // remain on disk as workspace packages but are no longer registered.
@@ -290,6 +298,7 @@ function registerBuiltInAdapters() {
     claudeLocalAdapter,
     codexLocalAdapter,
     openCodeLocalAdapter,
+    windsurfLocalAdapter,
     openAiCompatibleAdapter,
     openRouterCompatibleAdapter,
     geminiCompatibleAdapter,

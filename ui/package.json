@@ -42,6 +42,7 @@
     "@nessie/adapter-openclaw-gateway": "workspace:*",
     "@nessie/adapter-opencode-local": "workspace:*",
     "@nessie/adapter-pi-local": "workspace:*",
+    "@nessie/adapter-windsurf-local": "workspace:*",
     "@nessie/adapter-utils": "workspace:*",
     "@nessie/shared": "workspace:*",
     "@radix-ui/react-slot": "^1.2.4",

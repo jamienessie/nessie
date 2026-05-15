@@ -48,6 +48,7 @@ import type { PluginJobScheduler } from "./plugin-job-scheduler.js";
 import type { PluginJobStore } from "./plugin-job-store.js";
 import type { PluginToolDispatcher } from "./plugin-tool-dispatcher.js";
 import type { PluginLifecycleManager } from "./plugin-lifecycle.js";
+import type { PluginStreamBus } from "./plugin-stream-bus.js";
 import { pluginDatabaseService } from "./plugin-database.js";
 
 const execFileAsync = promisify(execFile);
@@ -233,6 +234,14 @@ export interface PluginRuntimeServices {
   toolDispatcher: PluginToolDispatcher;
   /** Lifecycle manager for state transitions and worker lifecycle events. */
   lifecycleManager: PluginLifecycleManager;
+  /**
+   * Optional in-memory pub/sub bus that fans out worker stream events
+   * (streams.open / streams.emit / streams.close) to SSE clients. When
+   * present, the loader wires per-worker `onStreamNotification` callbacks
+   * into `streamBus.publish`. When absent, stream events are dropped on
+   * the host side (workers can still emit; nothing is forwarded).
+   */
+  streamBus?: PluginStreamBus;
   /**
    * Factory that creates worker-to-host RPC handlers for a given plugin.
    *
@@ -1818,6 +1827,7 @@ export function pluginLoader(
       // ------------------------------------------------------------------
       // 5. Spawn worker process
       // ------------------------------------------------------------------
+      const streamBus = runtimeServices.streamBus;
       const workerOptions: WorkerStartOptions = {
         entrypointPath: workerEntrypoint,
         manifest,
@@ -1831,6 +1841,24 @@ export function pluginLoader(
           PAPERCLIP_DEPLOYMENT_MODE: instanceInfo.deploymentMode ?? "",
           PAPERCLIP_DEPLOYMENT_EXPOSURE: instanceInfo.deploymentExposure ?? "",
         },
+        ...(streamBus
+          ? {
+              onStreamNotification: (method, params) => {
+                const channel = typeof params.channel === "string" ? params.channel : "";
+                const companyId = typeof params.companyId === "string" ? params.companyId : "";
+                if (!channel || !companyId) return;
+                const eventType =
+                  method === "streams.open"
+                    ? "open"
+                    : method === "streams.close"
+                      ? "close"
+                      : method === "streams.emit"
+                        ? "message"
+                        : "error";
+                streamBus.publish(pluginId, channel, companyId, params.event ?? null, eventType);
+              },
+            }
+          : {}),
       };
 
       // Repo-local plugin installs can resolve workspace TS sources at runtime

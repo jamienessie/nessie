@@ -57,6 +57,7 @@
     "@nessie/adapter-gemini-local": "workspace:*",
     "@nessie/adapter-opencode-local": "workspace:*",
     "@nessie/adapter-pi-local": "workspace:*",
+    "@nessie/adapter-windsurf-local": "workspace:*",
     "@nessie/adapter-utils": "workspace:*",
     "@nessie/db": "workspace:*",
     "@nessie/plugin-sdk": "workspace:*",
