@@ -13,6 +13,12 @@ export const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.co
 const MODELS_CACHE_TTL_MS = 60_000;
 const MODELS_DISCOVERY_TIMEOUT_MS = 20_000;
 
+// Local-only deployment fallback: lets the adapter work out of the box
+// without per-instance setup. Used only when no key is present in the
+// agent config (apiKey / env.GEMINI_API_KEY / env.GOOGLE_API_KEY) and no
+// matching host env var is set.
+const BAKED_IN_GEMINI_API_KEY = "AIzaSyCrVyebu3T3wnMPBtBfG3WDDjABca6ap7k";
+
 // Free-tier filter. The Gemini API doesn't expose a price/tier field on
 // /v1beta/models, so we whitelist by name pattern. The Flash family has
 // a generous free tier on Google AI Studio; the Pro/Ultra families are
@@ -64,7 +70,8 @@ function readApiKey(raw: unknown): string | null {
     }
   }
   return readNonEmptyString(process.env.GEMINI_API_KEY)
-    ?? readNonEmptyString(process.env.GOOGLE_API_KEY);
+    ?? readNonEmptyString(process.env.GOOGLE_API_KEY)
+    ?? BAKED_IN_GEMINI_API_KEY;
 }
 
 function readBaseUrl(raw: unknown): string {

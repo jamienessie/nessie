@@ -1031,7 +1031,72 @@ async function pathExists(candidate: string) {
   }
 }
 
-async function resolveCommandPath(command: string, cwd: string, env: NodeJS.ProcessEnv): Promise<string | null> {
+function windowsAppDataRoots(env: NodeJS.ProcessEnv): string[] {
+  // Some launch contexts (services, restricted shells) strip APPDATA but keep
+  // USERPROFILE, so derive a backup root before giving up.
+  const roots = new Set<string>();
+  if (env.APPDATA) roots.add(env.APPDATA);
+  if (env.USERPROFILE) roots.add(path.join(env.USERPROFILE, "AppData", "Roaming"));
+  return Array.from(roots);
+}
+
+function windowsLocalAppDataRoots(env: NodeJS.ProcessEnv): string[] {
+  const roots = new Set<string>();
+  if (env.LOCALAPPDATA) roots.add(env.LOCALAPPDATA);
+  if (env.USERPROFILE) roots.add(path.join(env.USERPROFILE, "AppData", "Local"));
+  return Array.from(roots);
+}
+
+async function resolveInDir(
+  dir: string,
+  command: string,
+  exts: string[],
+  hasExtension: boolean,
+): Promise<string | null> {
+  const candidates = hasExtension
+    ? [path.join(dir, command)]
+    : exts.map((ext) => path.join(dir, `${command}${ext}`));
+  for (const candidate of candidates) {
+    if (await pathExists(candidate)) return candidate;
+  }
+  return null;
+}
+
+function compareSemverDescending(a: string, b: string): number {
+  const pa = a.split(".").map((n) => Number.parseInt(n, 10) || 0);
+  const pb = b.split(".").map((n) => Number.parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const diff = (pb[i] ?? 0) - (pa[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+async function resolveInVersionedDir(
+  root: string,
+  command: string,
+  exts: string[],
+  hasExtension: boolean,
+): Promise<string | null> {
+  let entries: Dirent[];
+  try {
+    entries = await fs.readdir(root, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const versionDirs = entries
+    .filter((e) => e.isDirectory() && /^\d+(?:\.\d+)*$/.test(e.name))
+    .map((e) => e.name)
+    .sort(compareSemverDescending);
+  for (const name of versionDirs) {
+    const found = await resolveInDir(path.join(root, name), command, exts, hasExtension);
+    if (found) return found;
+  }
+  return null;
+}
+
+export async function resolveCommandPath(command: string, cwd: string, env: NodeJS.ProcessEnv): Promise<string | null> {
   const hasPathSeparator = command.includes("/") || command.includes("\\");
   if (hasPathSeparator) {
     const absolute = path.isAbsolute(command) ? command : path.resolve(cwd, command);
@@ -1056,14 +1121,42 @@ async function resolveCommandPath(command: string, cwd: string, env: NodeJS.Proc
     }
   }
 
-  // Fallback: check npm global prefix directory on Windows
   if (process.platform === "win32") {
-    const npmGlobalFallback = path.join(env.APPDATA ?? "", "npm");
-    const fallbackCandidates = hasExtension
-      ? [path.join(npmGlobalFallback, command)]
-      : exts.map((ext) => path.join(npmGlobalFallback, `${command}${ext}`));
-    for (const candidate of fallbackCandidates) {
-      if (await pathExists(candidate)) return candidate;
+    // npm-global fallback. Try every AppData root we can derive — APPDATA can be
+    // missing in service-style launches even when the binary is present.
+    for (const appData of windowsAppDataRoots(env)) {
+      const found = await resolveInDir(path.join(appData, "npm"), command, exts, hasExtension);
+      if (found) return found;
+    }
+
+    // Native-installer fallbacks for CLIs whose Windows installers don't drop
+    // a shim on PATH (Claude Code, Codex, Windsurf's bundled Devin agent).
+    // Keyed by the bare command name.
+    const lower = command.toLowerCase();
+    const claudeCodeRoots = windowsAppDataRoots(env).map((root) =>
+      path.join(root, "Claude", "claude-code"),
+    );
+    const codexRoots = windowsLocalAppDataRoots(env).map((root) =>
+      path.join(root, "OpenAI", "Codex", "bin"),
+    );
+    const windsurfDevinRoots = windowsLocalAppDataRoots(env).map((root) =>
+      path.join(root, "Programs", "Windsurf", "resources", "app", "extensions", "windsurf", "devin", "bin"),
+    );
+    if (lower === "claude") {
+      for (const root of claudeCodeRoots) {
+        const found = await resolveInVersionedDir(root, command, exts, hasExtension);
+        if (found) return found;
+      }
+    } else if (lower === "codex") {
+      for (const root of codexRoots) {
+        const found = await resolveInDir(root, command, exts, hasExtension);
+        if (found) return found;
+      }
+    } else if (lower === "devin") {
+      for (const root of windsurfDevinRoots) {
+        const found = await resolveInDir(root, command, exts, hasExtension);
+        if (found) return found;
+      }
     }
   }
 

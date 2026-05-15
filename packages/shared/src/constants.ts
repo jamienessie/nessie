@@ -36,7 +36,9 @@ export const AGENT_ADAPTER_TYPES = [
   "openai_compatible",
   "openrouter_compatible",
   "gemini_compatible",
+  "azure_openai",
   "http_webhook",
+  "windsurf_local",
 ] as const;
 export type AgentAdapterType = (typeof AGENT_ADAPTER_TYPES)[number] | (string & {});
 

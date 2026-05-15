@@ -44,7 +44,6 @@ import {
   models as openCodeLocalModels,
   modelProfiles as openCodeLocalModelProfiles,
 } from "@nessie/adapter-opencode-local";
-import { createServerAdapter as createWindsurfLocalAdapter } from "@nessie/adapter-windsurf-local";
 import {
   execute as openAiCompatibleExecute,
   testEnvironment as openAiCompatibleTestEnvironment,
@@ -100,6 +99,19 @@ import {
   agentConfigurationDoc as httpWebhookAgentConfigurationDoc,
   models as httpWebhookModels,
 } from "@nessie/adapter-http-webhook";
+import {
+  execute as windsurfLocalExecute,
+  testEnvironment as windsurfLocalTestEnvironment,
+  listWindsurfSkills,
+  syncWindsurfSkills,
+  sessionCodec as windsurfLocalSessionCodec,
+} from "@nessie/adapter-windsurf-local/server";
+import {
+  agentConfigurationDoc as windsurfLocalAgentConfigurationDoc,
+  models as windsurfLocalModels,
+  modelProfiles as windsurfLocalModelProfiles,
+  DEFAULT_WINDSURF_COMMAND,
+} from "@nessie/adapter-windsurf-local";
 import { listCodexModels, refreshCodexModels } from "./codex-models.js";
 import { BUILTIN_ADAPTER_TYPES } from "./builtin-adapter-types.js";
 import { buildExternalAdapters } from "./plugin-loader.js";
@@ -196,13 +208,6 @@ const openCodeLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openCodeLocalAgentConfigurationDoc,
 };
 
-const windsurfLocalAdapterBase = createWindsurfLocalAdapter();
-const windsurfLocalAdapter: ServerAdapterModule = {
-  ...windsurfLocalAdapterBase,
-  sessionManagement:
-    getAdapterSessionManagement("windsurf_local") ?? windsurfLocalAdapterBase.sessionManagement,
-};
-
 const openAiCompatibleAdapter: ServerAdapterModule = {
   type: "openai_compatible",
   execute: openAiCompatibleExecute,
@@ -278,6 +283,25 @@ const httpWebhookAdapter: ServerAdapterModule = {
   agentConfigurationDoc: httpWebhookAgentConfigurationDoc,
 };
 
+const windsurfLocalAdapter: ServerAdapterModule = {
+  type: "windsurf_local",
+  execute: windsurfLocalExecute,
+  testEnvironment: windsurfLocalTestEnvironment,
+  listSkills: listWindsurfSkills,
+  syncSkills: syncWindsurfSkills,
+  sessionCodec: windsurfLocalSessionCodec,
+  sessionManagement: getAdapterSessionManagement("windsurf_local") ?? undefined,
+  models: windsurfLocalModels,
+  modelProfiles: windsurfLocalModelProfiles,
+  supportsLocalAgentJwt: true,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: false,
+  getRuntimeCommandSpec: (config) =>
+    buildNpmRuntimeCommandSpec(config, DEFAULT_WINDSURF_COMMAND, "@windsurf/devin-cli"),
+  agentConfigurationDoc: windsurfLocalAgentConfigurationDoc,
+};
+
 const adaptersByType = new Map<string, ServerAdapterModule>();
 
 // For builtin types that are overridden by an external adapter, we keep the
@@ -298,12 +322,12 @@ function registerBuiltInAdapters() {
     claudeLocalAdapter,
     codexLocalAdapter,
     openCodeLocalAdapter,
-    windsurfLocalAdapter,
     openAiCompatibleAdapter,
     openRouterCompatibleAdapter,
     geminiCompatibleAdapter,
     azureOpenaiAdapter,
     httpWebhookAdapter,
+    windsurfLocalAdapter,
     processAdapter,
     httpAdapter,
   ]) {
@@ -404,9 +428,27 @@ export function unregisterServerAdapter(type: string): void {
   adaptersByType.delete(type);
 }
 
+// Adapters that lived in earlier Paperclip / Nessie phases but were dropped
+// from the Phase 1 builtin registry. Hitting one of these means an agent row
+// in the DB still references a deprecated type — surface a migration hint
+// rather than the bare "Unknown adapter type" error.
+const DEPRECATED_ADAPTER_REPLACEMENTS: Record<string, string> = {
+  acpx_local: "windsurf_local",
+  gemini_local: "gemini_compatible",
+  cursor: "claude_local",
+  pi_local: "openai_compatible",
+  openclaw_gateway: "openai_compatible",
+};
+
 export function requireServerAdapter(type: string): ServerAdapterModule {
   const adapter = findActiveServerAdapter(type);
   if (!adapter) {
+    const replacement = DEPRECATED_ADAPTER_REPLACEMENTS[type];
+    if (replacement) {
+      throw new Error(
+        `Adapter type "${type}" was deprecated in Nessie Phase 1. Migrate this agent to "${replacement}" (run scripts/migrate-deprecated-adapter-types.mjs --apply).`,
+      );
+    }
     throw new Error(`Unknown adapter type: ${type}`);
   }
   return adapter;

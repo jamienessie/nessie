@@ -53,19 +53,18 @@ function notifyAdapterChange(): void {
 setDynamicParserResultNotifier(notifyAdapterChange);
 
 function registerBuiltInUIAdapters() {
+  // Phase 1 UI catalog. Mirrors the server registry at
+  // server/src/adapters/registry.ts — deferred adapters (acpx_local,
+  // gemini_local, hermes_local, pi_local, cursor, openclaw_gateway) stay
+  // imported so external override plugins can still find them, but they are
+  // not registered as choices in the agent-creation flow.
   for (const adapter of [
-    acpxLocalUIAdapter,
     azureOpenaiUIAdapter,
     claudeLocalUIAdapter,
     codexLocalUIAdapter,
-    geminiLocalUIAdapter,
-    hermesLocalUIAdapter,
     openCodeLocalUIAdapter,
     openRouterUIAdapter,
     geminiCompatibleUIAdapter,
-    piLocalUIAdapter,
-    cursorLocalUIAdapter,
-    openClawGatewayUIAdapter,
     windsurfLocalUIAdapter,
     processUIAdapter,
     httpUIAdapter,
@@ -74,6 +73,14 @@ function registerBuiltInUIAdapters() {
     builtinAdaptersByType.set(adapter.type, adapter);
     registerUIAdapter(adapter);
   }
+  // Imports retained intentionally for the deactivated UI adapters above so
+  // dynamic-parser fallback paths and external overrides can still resolve them.
+  void acpxLocalUIAdapter;
+  void geminiLocalUIAdapter;
+  void hermesLocalUIAdapter;
+  void piLocalUIAdapter;
+  void cursorLocalUIAdapter;
+  void openClawGatewayUIAdapter;
 }
 
 export function registerUIAdapter(adapter: UIAdapterModule): void {

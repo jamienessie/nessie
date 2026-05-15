@@ -10,6 +10,7 @@ import {
   DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE,
   materializePaperclipSkillCopy,
   renderPaperclipWakePrompt,
+  resolveCommandPath,
   runningProcesses,
   runChildProcess,
   sanitizeSshRemoteEnv,
@@ -817,5 +818,157 @@ describe("appendWithByteCap", () => {
     expect(output).not.toContain("\uFFFD");
     expect(Buffer.from(output, "utf8").toString("utf8")).toBe(output);
     expect(Buffer.byteLength(output, "utf8")).toBeLessThanOrEqual(7);
+  });
+});
+
+describe("resolveCommandPath — Windows native-installer fallbacks", () => {
+  const isWindows = process.platform === "win32";
+  const describeWin = isWindows ? describe : describe.skip;
+
+  async function makeFakeBinary(dir: string, name: string): Promise<string> {
+    await fs.mkdir(dir, { recursive: true });
+    const filePath = path.join(dir, name);
+    await fs.writeFile(filePath, "", { mode: 0o755 });
+    return filePath;
+  }
+
+  describeWin("Claude Code", () => {
+    it("discovers claude.exe under %APPDATA%\\Claude\\claude-code\\<version>\\", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "nessie-resolver-claude-"));
+      try {
+        const expected = await makeFakeBinary(
+          path.join(root, "Claude", "claude-code", "2.1.128"),
+          "claude.exe",
+        );
+        const resolved = await resolveCommandPath("claude", process.cwd(), {
+          APPDATA: root,
+          PATH: "",
+          PATHEXT: ".EXE;.CMD",
+        });
+        // Windows filesystem is case-insensitive; the resolver returns the
+        // PATHEXT-cased extension while makeFakeBinary used lowercase.
+        expect(resolved?.toLowerCase()).toBe(expected.toLowerCase());
+      } finally {
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    });
+
+    it("picks the highest semver when multiple versions exist", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "nessie-resolver-claude-multi-"));
+      try {
+        await makeFakeBinary(path.join(root, "Claude", "claude-code", "1.0.0"), "claude.exe");
+        await makeFakeBinary(path.join(root, "Claude", "claude-code", "2.0.5"), "claude.exe");
+        const expected = await makeFakeBinary(
+          path.join(root, "Claude", "claude-code", "2.10.3"),
+          "claude.exe",
+        );
+        const resolved = await resolveCommandPath("claude", process.cwd(), {
+          APPDATA: root,
+          PATH: "",
+          PATHEXT: ".EXE;.CMD",
+        });
+        // Windows filesystem is case-insensitive; the resolver returns the
+        // PATHEXT-cased extension while makeFakeBinary used lowercase.
+        expect(resolved?.toLowerCase()).toBe(expected.toLowerCase());
+      } finally {
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    });
+
+    it("falls back to USERPROFILE-derived AppData when APPDATA is missing", async () => {
+      const userProfile = await fs.mkdtemp(path.join(os.tmpdir(), "nessie-resolver-profile-"));
+      try {
+        const expected = await makeFakeBinary(
+          path.join(userProfile, "AppData", "Roaming", "Claude", "claude-code", "2.1.128"),
+          "claude.exe",
+        );
+        const resolved = await resolveCommandPath("claude", process.cwd(), {
+          USERPROFILE: userProfile,
+          PATH: "",
+          PATHEXT: ".EXE;.CMD",
+        });
+        // Windows filesystem is case-insensitive; the resolver returns the
+        // PATHEXT-cased extension while makeFakeBinary used lowercase.
+        expect(resolved?.toLowerCase()).toBe(expected.toLowerCase());
+      } finally {
+        await fs.rm(userProfile, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describeWin("Codex", () => {
+    it("discovers codex.exe under %LOCALAPPDATA%\\OpenAI\\Codex\\bin\\", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "nessie-resolver-codex-"));
+      try {
+        const expected = await makeFakeBinary(
+          path.join(root, "OpenAI", "Codex", "bin"),
+          "codex.exe",
+        );
+        const resolved = await resolveCommandPath("codex", process.cwd(), {
+          LOCALAPPDATA: root,
+          PATH: "",
+          PATHEXT: ".EXE;.CMD",
+        });
+        // Windows filesystem is case-insensitive; the resolver returns the
+        // PATHEXT-cased extension while makeFakeBinary used lowercase.
+        expect(resolved?.toLowerCase()).toBe(expected.toLowerCase());
+      } finally {
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describeWin("Windsurf Devin agent (bundled inside the IDE Electron app)", () => {
+    it("discovers devin.exe under Windsurf\\resources\\app\\extensions\\windsurf\\devin\\bin\\", async () => {
+      const root = await fs.mkdtemp(path.join(os.tmpdir(), "nessie-resolver-devin-"));
+      try {
+        const expected = await makeFakeBinary(
+          path.join(
+            root,
+            "Programs",
+            "Windsurf",
+            "resources",
+            "app",
+            "extensions",
+            "windsurf",
+            "devin",
+            "bin",
+          ),
+          "devin.exe",
+        );
+        const resolved = await resolveCommandPath("devin", process.cwd(), {
+          LOCALAPPDATA: root,
+          PATH: "",
+          PATHEXT: ".EXE;.CMD",
+        });
+        // Windows filesystem is case-insensitive; the resolver returns the
+        // PATHEXT-cased extension while makeFakeBinary used lowercase.
+        expect(resolved?.toLowerCase()).toBe(expected.toLowerCase());
+      } finally {
+        await fs.rm(root, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describeWin("npm-global resilience (OpenCode false-negative)", () => {
+    it("finds opencode.cmd via USERPROFILE-derived AppData when APPDATA is missing", async () => {
+      const userProfile = await fs.mkdtemp(path.join(os.tmpdir(), "nessie-resolver-npm-"));
+      try {
+        const expected = await makeFakeBinary(
+          path.join(userProfile, "AppData", "Roaming", "npm"),
+          "opencode.cmd",
+        );
+        const resolved = await resolveCommandPath("opencode", process.cwd(), {
+          USERPROFILE: userProfile,
+          PATH: "",
+          PATHEXT: ".EXE;.CMD",
+        });
+        // Windows filesystem is case-insensitive; the resolver returns the
+        // PATHEXT-cased extension while makeFakeBinary used lowercase.
+        expect(resolved?.toLowerCase()).toBe(expected.toLowerCase());
+      } finally {
+        await fs.rm(userProfile, { recursive: true, force: true });
+      }
+    });
   });
 });
