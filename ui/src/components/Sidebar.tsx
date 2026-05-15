@@ -174,6 +174,7 @@ export function Sidebar() {
           <SidebarNavItem to="/trust-receipts" label="Trust Receipts" swatchColor="#27D17F" />
           <SidebarNavItem to="/arena" label="Arena" swatchColor="#1FA7FF" />
           <SidebarNavItem to="/snippets" label="Snippets" swatchColor="#FFB400" />
+          <SidebarNavItem to="/replay" label="Replay Lab" swatchColor="#7C5CFF" />
         </SidebarSection>
 
         <PluginSlotOutlet

@@ -666,6 +666,13 @@
       "when": 1778804552928,
       "tag": "0094_short_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1778805236752,
+      "tag": "0095_blue_malcolm_colcord",
+      "breakpoints": true
     }
   ]
 }

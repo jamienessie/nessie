@@ -79,6 +79,7 @@ export { arenaResults } from "./arena_results.js";
 export { agentCoachingNotes } from "./agent_coaching_notes.js";
 export { snippets, snippetRevisions } from "./snippets.js";
 export { busAutoReplyRules } from "./bus_auto_reply_rules.js";
+export { replayRuns } from "./replay_runs.js";
 export { financeEvents } from "./finance_events.js";
 export { approvals } from "./approvals.js";
 export { approvalComments } from "./approval_comments.js";

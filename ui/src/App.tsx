@@ -47,6 +47,7 @@ import Reputation from "./pages/Reputation";
 import Arena from "./pages/Arena";
 import CoachingNotes from "./pages/CoachingNotes";
 import Snippets from "./pages/Snippets";
+import ReplayLab from "./pages/ReplayLab";
 import { PlugInJanitor } from "./pages/PlugInJanitor";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanyEnvironments } from "./pages/CompanyEnvironments";
@@ -158,6 +159,7 @@ function boardRoutes() {
       <Route path="trust-receipts" element={<TrustReceipts />} />
       <Route path="arena" element={<Arena />} />
       <Route path="snippets" element={<Snippets />} />
+      <Route path="replay" element={<ReplayLab />} />
       <Route path="agents/:agentId/reputation" element={<Reputation />} />
       <Route path="agents/:agentId/coaching" element={<CoachingNotes />} />
       <Route path="plug-in-janitor" element={<PlugInJanitor />} />

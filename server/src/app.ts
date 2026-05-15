@@ -256,6 +256,11 @@ export async function createApp(
   // operator inbox renders them.
   const { busAutoReplyRulesRoutes } = await import("./routes/bus-auto-reply-rules.js");
   api.use(busAutoReplyRulesRoutes(db));
+  // Replay Lab — re-run any past heartbeat run (or ad-hoc prompt) with
+  // model/prompt/system-prompt overrides. Side-by-side rendered against
+  // the original on the /replay Cockpit page.
+  const { replayLabRoutes } = await import("./routes/replay-lab.js");
+  api.use(replayLabRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");
