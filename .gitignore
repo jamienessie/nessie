@@ -49,6 +49,12 @@ diagnostics/
 # Doc maintenance cursor
 .doc-review-cursor
 
+# Local-machine artifacts (operator-only, never commit)
+.tmp-bin/
+.tmp-*.log
+.recovery-backup-*/
+.claude/scheduled_tasks.lock
+
 # Playwright
 tests/e2e/test-results/
 tests/e2e/playwright-report/
