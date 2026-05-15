@@ -238,6 +238,10 @@ export async function createApp(
   // candidate models, judged by a single LLM call, with leaderboard rollup.
   const { arenaRoutes } = await import("./routes/arena.js");
   api.use(arenaRoutes(db));
+  // Coaching Notes — operator-curated persistent guidance per agent,
+  // prepended to the agent's system prompt at heartbeat dispatch time.
+  const { coachingNotesRoutes } = await import("./routes/coaching-notes.js");
+  api.use(coachingNotesRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

@@ -45,6 +45,7 @@ import BlackBox from "./pages/BlackBox";
 import TrustReceipts from "./pages/TrustReceipts";
 import Reputation from "./pages/Reputation";
 import Arena from "./pages/Arena";
+import CoachingNotes from "./pages/CoachingNotes";
 import { PlugInJanitor } from "./pages/PlugInJanitor";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanyEnvironments } from "./pages/CompanyEnvironments";
@@ -156,6 +157,7 @@ function boardRoutes() {
       <Route path="trust-receipts" element={<TrustReceipts />} />
       <Route path="arena" element={<Arena />} />
       <Route path="agents/:agentId/reputation" element={<Reputation />} />
+      <Route path="agents/:agentId/coaching" element={<CoachingNotes />} />
       <Route path="plug-in-janitor" element={<PlugInJanitor />} />
       <Route path="inbox" element={<InboxRootRedirect />} />
       <Route path="inbox/mine" element={<Inbox />} />

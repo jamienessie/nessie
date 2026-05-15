@@ -76,6 +76,7 @@ export { operatorConstitution, operatorConstitutionVersions } from "./operator_c
 export { trustReceipts } from "./trust_receipts.js";
 export { arenaRuns } from "./arena_runs.js";
 export { arenaResults } from "./arena_results.js";
+export { agentCoachingNotes } from "./agent_coaching_notes.js";
 export { financeEvents } from "./finance_events.js";
 export { approvals } from "./approvals.js";
 export { approvalComments } from "./approval_comments.js";

@@ -81,6 +81,7 @@ import {
   type RunLivenessClassificationInput,
 } from "./run-liveness.js";
 import { logActivity, publishPluginDomainEvent, type LogActivityInput } from "./activity-log.js";
+import { coachingNotesService } from "./coaching-notes.js";
 import { blackBoxRecorder } from "./black-box.js";
 import {
   buildWorkspaceReadyComment,
@@ -7630,9 +7631,27 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             },
           }
         : agent;
+      // Coaching Notes: any operator-curated active notes get prepended
+      // to the agent's systemPrompt so cheap models re-receive standing
+      // guidance every run. Adapters that don't read systemPrompt
+      // (claude_local, codex_local) ignore the field harmlessly.
+      const coachingPrefix = await coachingNotesService(db).assemblePrefix(agent.companyId, agent.id);
+      const agentForExecute = coachingPrefix
+        ? {
+            ...tieredAgent,
+            adapterConfig: {
+              ...((tieredAgent.adapterConfig as Record<string, unknown> | null | undefined) ?? {}),
+              systemPrompt: (() => {
+                const existing = (tieredAgent.adapterConfig as Record<string, unknown> | null | undefined)?.systemPrompt;
+                const existingStr = typeof existing === "string" ? existing : "";
+                return existingStr ? `${coachingPrefix}\n${existingStr}` : coachingPrefix;
+              })(),
+            },
+          }
+        : tieredAgent;
       const adapterResult = await adapter.execute({
         runId: run.id,
-        agent: tieredAgent,
+        agent: agentForExecute,
         runtime: runtimeForAdapter,
         config: runtimeConfig,
         context,
