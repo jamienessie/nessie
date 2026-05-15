@@ -83,6 +83,7 @@ import {
 import { logActivity, publishPluginDomainEvent, type LogActivityInput } from "./activity-log.js";
 import { coachingNotesService } from "./coaching-notes.js";
 import { resolveAutoRoutedModel } from "./auto-router.js";
+import { runPreFlightChecks } from "./preflight-check.js";
 import { blackBoxRecorder } from "./black-box.js";
 import {
   buildWorkspaceReadyComment,
@@ -7667,6 +7668,46 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             },
           }
         : { ...tieredAgent, adapterConfig: baseAdapterConfig };
+      // Pre-Flight Check: when runtimeConfig.preFlight === true, run a
+      // deterministic checklist (workspace exists, git clean, branch up
+      // to date) before dispatching to the adapter. Failures abort the
+      // run with a structured preflight_failed result so the operator
+      // can see exactly what went wrong without burning any tokens.
+      if (
+        agent.runtimeConfig &&
+        typeof agent.runtimeConfig === "object" &&
+        (agent.runtimeConfig as Record<string, unknown>).preFlight === true
+      ) {
+        const preflightCwd = executionTarget && typeof executionTarget === "object"
+          ? ((executionTarget as { cwd?: unknown }).cwd ?? null)
+          : null;
+        const preflight = await runPreFlightChecks({
+          cwd: typeof preflightCwd === "string" ? preflightCwd : null,
+        });
+        if (!preflight.ok) {
+          await logActivity(db, {
+            companyId: agent.companyId,
+            actorType: "system",
+            actorId: "nessie-preflight",
+            action: "heartbeat.preflight_failed",
+            entityType: "agent",
+            entityId: agent.id,
+            runId: run.id,
+            details: { checks: preflight.checks },
+          });
+          return {
+            exitCode: 1,
+            signal: null,
+            timedOut: false,
+            errorCode: "preflight_failed",
+            errorMessage: `pre-flight checks failed: ${preflight.checks
+              .filter((c) => c.status === "fail")
+              .map((c) => `${c.name}(${c.detail ?? ""})`)
+              .join("; ")}`,
+            resultJson: { preflight },
+          } satisfies Awaited<ReturnType<typeof adapter.execute>>;
+        }
+      }
       const adapterResult = await adapter.execute({
         runId: run.id,
         agent: agentForExecute,
