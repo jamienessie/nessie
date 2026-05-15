@@ -70,6 +70,10 @@ export interface ArenaService {
   get(runId: string, companyId: string): Promise<ArenaRunWithResults | null>;
   list(companyId: string, opts?: { taskType?: string; status?: ArenaRunStatus; limit?: number }): Promise<ArenaRunWithResults[]>;
   leaderboard(companyId: string, opts?: { taskType?: string }): Promise<LeaderboardEntry[]>;
+  /** Inline create+await wrapper. Used by Consensus Mode to fan out a
+   * single prompt to N cheap models inline and return the judged
+   * winner. */
+  runSync(input: CreateInput): Promise<ArenaRunWithResults | { ok: false; error: string }>;
 }
 
 export interface ArenaRunWithResults {
@@ -708,6 +712,18 @@ export function arenaService(db: Db, options: ArenaServiceOptions = {}): ArenaSe
       }
       entries.sort((a, b) => b.wins - a.wins || b.avgScore - a.avgScore);
       return entries;
+    },
+
+    async runSync(input) {
+      const created = await service.create(input);
+      if (!created.ok) return { ok: false, error: created.error };
+      const rt = runtime.get(created.runId);
+      if (rt) {
+        await rt.donePromise.catch(() => undefined);
+      }
+      const run = await service.get(created.runId, input.companyId);
+      if (!run) return { ok: false, error: "arena run vanished after start" };
+      return run;
     },
   };
   return service;

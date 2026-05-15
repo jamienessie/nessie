@@ -84,6 +84,7 @@ import { logActivity, publishPluginDomainEvent, type LogActivityInput } from "./
 import { coachingNotesService } from "./coaching-notes.js";
 import { resolveAutoRoutedModel } from "./auto-router.js";
 import { runPreFlightChecks } from "./preflight-check.js";
+import { runConsensus } from "./consensus.js";
 import { blackBoxRecorder } from "./black-box.js";
 import {
   buildWorkspaceReadyComment,
@@ -7707,6 +7708,65 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             resultJson: { preflight },
           } satisfies Awaited<ReturnType<typeof adapter.execute>>;
         }
+      }
+      // Consensus Mode: when runtimeConfig.consensus.enabled === true
+      // and a model list is configured, fan out to N cheap models inline
+      // through the Arena pipeline and return the judge-picked winner
+      // as the agent's output. Skips adapter.execute entirely.
+      const consensusConfig = (agent.runtimeConfig && typeof agent.runtimeConfig === "object")
+        ? (agent.runtimeConfig as Record<string, unknown>).consensus
+        : null;
+      if (
+        consensusConfig &&
+        typeof consensusConfig === "object" &&
+        (consensusConfig as Record<string, unknown>).enabled === true
+      ) {
+        const cc = consensusConfig as Record<string, unknown>;
+        const models = Array.isArray(cc.models)
+          ? (cc.models as unknown[]).filter((m): m is string => typeof m === "string")
+          : [];
+        const promptText = typeof context.prompt === "string"
+          ? (context as Record<string, unknown>).prompt as string
+          : JSON.stringify(context);
+        const judgeModel = typeof cc.judgeModel === "string" ? cc.judgeModel : undefined;
+        const taskType = typeof cc.taskType === "string" ? cc.taskType : agent.role;
+        const consensus = await runConsensus(db, {
+          companyId: agent.companyId,
+          taskType,
+          prompt: promptText,
+          models,
+          judgeModel,
+          requestedByAgentId: agent.id,
+        });
+        if (!consensus.ok) {
+          return {
+            exitCode: 1,
+            signal: null,
+            timedOut: false,
+            errorCode: "consensus_failed",
+            errorMessage: consensus.error,
+            resultJson: { consensus },
+          } satisfies Awaited<ReturnType<typeof adapter.execute>>;
+        }
+        await onLog("stdout", consensus.output.endsWith("\n") ? consensus.output : `${consensus.output}\n`);
+        return {
+          exitCode: 0,
+          signal: null,
+          timedOut: false,
+          provider: "nessie_consensus",
+          biller: "nessie_consensus",
+          model: consensus.winnerModel,
+          billingType: "metered_api",
+          summary: consensus.output.slice(0, 200),
+          resultJson: {
+            consensus: {
+              arenaRunId: consensus.arenaRunId,
+              winnerModel: consensus.winnerModel,
+              latencyMs: consensus.latencyMs,
+              perCandidate: consensus.perCandidate,
+            },
+          },
+        } satisfies Awaited<ReturnType<typeof adapter.execute>>;
       }
       const adapterResult = await adapter.execute({
         runId: run.id,
