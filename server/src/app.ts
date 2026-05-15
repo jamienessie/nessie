@@ -275,6 +275,11 @@ export async function createApp(
   // credential.
   const { credentialsRoutes } = await import("./routes/credentials.js");
   api.use(credentialsRoutes(db));
+  // Panic Stop — emergency pause-everything button. Pauses every
+  // non-terminated agent in the company + aborts every in-flight
+  // heartbeat run. For when the host machine is in PSU / thermal trouble.
+  const { panicStopRoutes } = await import("./routes/panic-stop.js");
+  api.use(panicStopRoutes(db, { pluginWorkerManager: workerManager }));
   // "Today's Saves" — KPI rollup of the post-Arena feature wins
   // (auto-routes, consensus runs, replays, preflight blocks, arena
   // wins) over the current UTC day. Surfaced on the Dashboard so
