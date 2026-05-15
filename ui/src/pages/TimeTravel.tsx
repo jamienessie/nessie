@@ -98,7 +98,36 @@ export default function TimeTravel() {
       ) : !snapshotQuery.data ? (
         <EmptyState icon={History} message="Pick a moment in the past to inspect." />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="flex flex-col gap-4">
+          <StackPanel color={ACCENT} title={<span>State at that moment</span>}>
+            <div className="grid grid-cols-2 gap-3 p-3 text-xs md:grid-cols-4">
+              <div className="flex flex-col gap-1 rounded-md border bg-background p-2">
+                <span className="font-mono uppercase tracking-wider text-[10px] text-muted-foreground">
+                  active arena runs
+                </span>
+                <span className="text-lg font-bold">{snapshotQuery.data.state.activeArenaRuns}</span>
+              </div>
+              <div className="flex flex-col gap-1 rounded-md border bg-background p-2">
+                <span className="font-mono uppercase tracking-wider text-[10px] text-muted-foreground">
+                  pending bus messages
+                </span>
+                <span className="text-lg font-bold">{snapshotQuery.data.state.pendingBusMessages}</span>
+              </div>
+              <div className="flex flex-col gap-1 rounded-md border bg-background p-2">
+                <span className="font-mono uppercase tracking-wider text-[10px] text-muted-foreground">
+                  activity rows
+                </span>
+                <span className="text-lg font-bold">{snapshotQuery.data.activity.length}</span>
+              </div>
+              <div className="flex flex-col gap-1 rounded-md border bg-background p-2">
+                <span className="font-mono uppercase tracking-wider text-[10px] text-muted-foreground">
+                  scope snapshots
+                </span>
+                <span className="text-lg font-bold">{snapshotQuery.data.snapshots.length}</span>
+              </div>
+            </div>
+          </StackPanel>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <StackPanel color={ACCENT} title={<span>Activity (latest first)</span>}>
             {snapshotQuery.data.activity.length === 0 ? (
               <EmptyState icon={History} message="No activity at or before that moment." />
@@ -149,6 +178,7 @@ export default function TimeTravel() {
               </ul>
             )}
           </StackPanel>
+          </div>
         </div>
       )}
     </div>

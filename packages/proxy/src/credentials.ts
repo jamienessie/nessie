@@ -95,6 +95,14 @@ export function resolveSecret(
 
 // Quota Watchdog: increment a credential's daily request counter atomically,
 // wrapping the daily reset if needed. Called after a successful proxy call.
+//
+// IMPORTANT (A7): counters reset lazily on next call past dailyResetAt.
+// A credential that's idle across the reset window stays at its old count
+// (in the DB) until the next call. pickCredential() handles this correctly
+// by treating any past-reset credential as fresh for eligibility purposes,
+// so the stored value is best understood as "last observed" rather than
+// "current". A background sweep would normalise this, deliberately out of
+// scope for now.
 export async function recordDailyRequest(db: Db, credentialId: string): Promise<void> {
   const now = new Date();
   const reset = nextDailyResetAt(now);

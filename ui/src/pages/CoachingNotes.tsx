@@ -121,7 +121,10 @@ export default function CoachingNotes() {
         }
       >
         {active.length === 0 ? (
-          <EmptyState icon={MessageSquare} message="No active notes. Add one above." />
+          <EmptyState
+            icon={MessageSquare}
+            message='No active notes yet. Examples: "prefer 3-bullet summaries", "always cite file:line", "stop apologizing", "ask for confirmation before deleting files".'
+          />
         ) : (
           <ul className="flex flex-col gap-2 p-3">
             {active.map((n) => (

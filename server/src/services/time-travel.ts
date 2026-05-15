@@ -13,9 +13,9 @@
 // Operator-visible state only. Replaying private adapter session state
 // (anything inside heartbeat_runs.resultJson) is a v2 follow-up.
 
-import { and, desc, lte, eq, sql } from "drizzle-orm";
+import { and, desc, lte, eq, gte, sql } from "drizzle-orm";
 import type { Db } from "@nessie/db";
-import { activityLog, blackBoxRecords } from "@nessie/db";
+import { activityLog, agentBusMessages, arenaRuns, blackBoxRecords } from "@nessie/db";
 
 export interface TimeTravelActivityRow {
   id: string;
@@ -43,6 +43,13 @@ export interface TimeTravelView {
   at: string;
   activity: TimeTravelActivityRow[];
   snapshots: TimeTravelSnapshotRow[];
+  state: {
+    /** Arena runs that were in 'running' status at the chosen moment
+     *  (created at or before `at`, with no completedAt or completedAt > at). */
+    activeArenaRuns: number;
+    /** Bus messages in 'pending' status as of `at`. */
+    pendingBusMessages: number;
+  };
 }
 
 export interface TimeTravelService {
@@ -79,8 +86,34 @@ export function timeTravelService(db: Db): TimeTravelService {
         LIMIT 200
       `);
 
+      const [arenaActiveRow] = await db
+        .select({ c: sql<string>`count(*)` })
+        .from(arenaRuns)
+        .where(
+          and(
+            eq(arenaRuns.companyId, companyId),
+            lte(arenaRuns.createdAt, at),
+            sql`(${arenaRuns.completedAt} IS NULL OR ${arenaRuns.completedAt} > ${at})`,
+          ),
+        );
+      const [pendingBusRow] = await db
+        .select({ c: sql<string>`count(*)` })
+        .from(agentBusMessages)
+        .where(
+          and(
+            eq(agentBusMessages.companyId, companyId),
+            lte(agentBusMessages.createdAt, at),
+            eq(agentBusMessages.status, "pending"),
+            gte(agentBusMessages.createdAt, new Date(0)),
+          ),
+        );
+
       return {
         at: at.toISOString(),
+        state: {
+          activeArenaRuns: parseInt(arenaActiveRow?.c ?? "0", 10) || 0,
+          pendingBusMessages: parseInt(pendingBusRow?.c ?? "0", 10) || 0,
+        },
         activity: activityRows.map((r) => ({
           id: r.id,
           createdAt: r.createdAt.toISOString(),

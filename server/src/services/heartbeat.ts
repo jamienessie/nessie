@@ -7696,7 +7696,29 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
       // to date) before dispatching to the adapter. Failures abort the
       // run with a structured preflight_failed result so the operator
       // can see exactly what went wrong without burning any tokens.
+      // Operator can bypass via runtimeConfig.preFlightOverrideUntil
+      // (ISO 8601 timestamp); the override is consumed each run by
+      // checking it's still in the future, audit-logged as
+      // heartbeat.preflight_overridden.
+      const rcRecord = (agent.runtimeConfig as Record<string, unknown> | null) ?? {};
+      const overrideUntil = typeof rcRecord.preFlightOverrideUntil === "string"
+        ? new Date(rcRecord.preFlightOverrideUntil)
+        : null;
+      const overrideActive = overrideUntil && !Number.isNaN(overrideUntil.getTime()) && overrideUntil.getTime() > Date.now();
+      if (overrideActive) {
+        await logActivity(db, {
+          companyId: agent.companyId,
+          actorType: "system",
+          actorId: "nessie-preflight",
+          action: "heartbeat.preflight_overridden",
+          entityType: "agent",
+          entityId: agent.id,
+          runId: run.id,
+          details: { overrideUntil: overrideUntil!.toISOString() },
+        });
+      }
       if (
+        !overrideActive &&
         agent.runtimeConfig &&
         typeof agent.runtimeConfig === "object" &&
         (agent.runtimeConfig as Record<string, unknown>).preFlight === true

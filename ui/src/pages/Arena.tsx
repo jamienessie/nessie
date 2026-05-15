@@ -295,7 +295,10 @@ function HistoryTab({
       {runsQuery.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading runs…</p>
       ) : runs.length === 0 ? (
-        <EmptyState icon={Swords} message="No arena runs yet. Compose one in the Compose tab." />
+        <EmptyState
+          icon={Swords}
+          message='No arena runs yet. Try a 3-model "summarize" challenge from the Compose tab — picks the cheapest model that gives the same answer.'
+        />
       ) : (
         <>
           <RunList runs={runs} pinnedRunId={pinnedRunId} onPin={setPinnedRunId} />

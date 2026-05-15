@@ -281,6 +281,11 @@ export async function createApp(
   // operators see the free-tier story being told.
   const { savesTodayRoutes } = await import("./routes/saves-today.js");
   api.use(savesTodayRoutes(db));
+  // Agent next-run preview — computes the assembled system prompt
+  // (with coaching prefix), the picked model (after Auto-Router),
+  // and the active behaviors. Read-only sanity check.
+  const { agentPreviewRoutes } = await import("./routes/agent-preview.js");
+  api.use(agentPreviewRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

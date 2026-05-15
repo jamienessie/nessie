@@ -28,6 +28,10 @@ export interface TimeTravelView {
   at: string;
   activity: TimeTravelActivityRow[];
   snapshots: TimeTravelSnapshotRow[];
+  state: {
+    activeArenaRuns: number;
+    pendingBusMessages: number;
+  };
 }
 
 function qs(params: Record<string, string | undefined>): string {

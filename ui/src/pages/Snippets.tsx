@@ -99,7 +99,10 @@ export default function Snippets() {
             + New snippet
           </Button>
           {snippets.length === 0 ? (
-            <EmptyState icon={BookOpen} message="No snippets yet." />
+            <EmptyState
+              icon={BookOpen}
+              message='No snippets yet. Try keys like "summarize_3_bullets", "refactor_for_testability", "review_for_security" — reusable across Arena, Coaching, and Replay Lab.'
+            />
           ) : (
             <ul className="flex flex-col gap-1">
               {snippets.map((s) => (

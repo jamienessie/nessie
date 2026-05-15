@@ -100,6 +100,49 @@ export function agentBehaviorsRoutes(db: Db): Router {
     res.json({ behaviors: readBehaviors(row.runtimeConfig, row.adapterConfig) });
   });
 
+  // Pre-Flight override: flip runtimeConfig.preFlightOverrideUntil
+  // to (now + minutes). The heartbeat dispatcher reads it once per
+  // run and lets the run proceed without the pre-flight gate while
+  // the override is active.
+  router.post("/agents/:id/preflight-override", async (req: Request, res: Response) => {
+    const companyId = pickCompanyId(req);
+    if (!companyId) {
+      res.status(400).json({ error: "companyId required" });
+      return;
+    }
+    assertCompanyAccess(req, companyId);
+    const actor = getActorInfo(req);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const minutesRaw = typeof body.minutes === "number" ? body.minutes : 15;
+    const minutes = Math.max(1, Math.min(120, Math.floor(minutesRaw)));
+    const rows = await db
+      .select({ id: agents.id, companyId: agents.companyId, runtimeConfig: agents.runtimeConfig })
+      .from(agents)
+      .where(eq(agents.id, paramId(req, "id")))
+      .limit(1);
+    const row = rows[0];
+    if (!row || row.companyId !== companyId) {
+      res.status(404).json({ error: "agent not found" });
+      return;
+    }
+    const rc = (row.runtimeConfig as Record<string, unknown> | null) ?? {};
+    const until = new Date(Date.now() + minutes * 60_000);
+    await db
+      .update(agents)
+      .set({ runtimeConfig: { ...rc, preFlightOverrideUntil: until.toISOString() }, updatedAt: new Date() })
+      .where(eq(agents.id, row.id));
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      action: "agent.preflight_override_set",
+      entityType: "agent",
+      entityId: row.id,
+      details: { until: until.toISOString(), minutes },
+    });
+    res.json({ until: until.toISOString(), minutes });
+  });
+
   router.put("/agents/:id/behaviors", async (req: Request, res: Response) => {
     const companyId = pickCompanyId(req);
     if (!companyId) {

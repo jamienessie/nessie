@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sliders } from "lucide-react";
 import { SUPPORTED_ARENA_MODELS, DEFAULT_ARENA_JUDGE_MODEL } from "@nessie/shared";
 import { agentBehaviorsApi, type AgentBehaviors } from "../api/agentBehaviors";
+import { agentPreviewApi } from "../api/agentPreview";
 import { agentsApi } from "../api/agents";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
@@ -90,6 +91,27 @@ export default function AgentBehaviorsPage() {
     },
     onSuccess: (data) => {
       setDraft(data.behaviors);
+      qc.invalidateQueries({ queryKey: ["agent-behaviors", agentId] });
+      qc.invalidateQueries({ queryKey: ["agent-preview", agentId] });
+    },
+  });
+
+  const previewQuery = useQuery({
+    queryKey: ["agent-preview", agentId, companyId],
+    queryFn: () => {
+      if (!agentId || !companyId) return Promise.resolve(null);
+      return agentPreviewApi.fetch(agentId, companyId);
+    },
+    enabled: Boolean(agentId && companyId),
+  });
+
+  const preflightOverride = useMutation({
+    mutationFn: (minutes: number) => {
+      if (!agentId || !companyId) throw new Error("missing context");
+      return agentPreviewApi.preflightOverride(agentId, { companyId, minutes });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agent-preview", agentId] });
       qc.invalidateQueries({ queryKey: ["agent-behaviors", agentId] });
     },
   });
@@ -221,6 +243,66 @@ export default function AgentBehaviorsPage() {
           </div>
         </div>
       </StackPanel>
+
+      {previewQuery.data && (
+        <StackPanel color="#7C5CFF" title={<span>Next-run preview</span>}>
+          <div className="flex flex-col gap-3 p-4 text-xs">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="flex flex-col gap-1 rounded-md border bg-background p-2">
+                <span className="font-mono uppercase tracking-wider text-[10px] text-muted-foreground">resolved model</span>
+                <span className="font-mono">{previewQuery.data.preview.resolvedModel ?? "(none)"}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {previewQuery.data.preview.routerSource === "leaderboard"
+                    ? `via leaderboard · ${previewQuery.data.preview.routerReason ?? ""}`
+                    : `configured · ${previewQuery.data.preview.routerReason ?? ""}`}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 rounded-md border bg-background p-2">
+                <span className="font-mono uppercase tracking-wider text-[10px] text-muted-foreground">configured model</span>
+                <span className="font-mono">{previewQuery.data.preview.configuredModel ?? "(none)"}</span>
+              </div>
+            </div>
+            <details>
+              <summary className="cursor-pointer font-mono uppercase tracking-wider text-[10px] text-muted-foreground">
+                assembled system prompt
+              </summary>
+              <pre className="mt-2 whitespace-pre-wrap rounded-md bg-muted/40 p-2 font-mono text-[11px]">
+                {previewQuery.data.preview.assembledSystemPrompt ?? "(none)"}
+              </pre>
+            </details>
+            <div className="rounded-md border bg-background p-2">
+              <div className="font-mono uppercase tracking-wider text-[10px] text-muted-foreground">
+                pre-flight override
+              </div>
+              <div className="mt-1 flex items-center gap-2">
+                {previewQuery.data.preview.behaviors.preFlightOverrideUntil ? (
+                  <span className="font-mono text-[11px]">
+                    active until {new Date(previewQuery.data.preview.behaviors.preFlightOverrideUntil).toLocaleString()}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">no override active</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => preflightOverride.mutate(15)}
+                  disabled={preflightOverride.isPending}
+                  className="ml-auto rounded-md border bg-background px-2 py-1 text-[11px] font-mono"
+                >
+                  {preflightOverride.isPending ? "…" : "override 15m"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => preflightOverride.mutate(60)}
+                  disabled={preflightOverride.isPending}
+                  className="rounded-md border bg-background px-2 py-1 text-[11px] font-mono"
+                >
+                  {preflightOverride.isPending ? "…" : "override 1h"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </StackPanel>
+      )}
     </div>
   );
 }

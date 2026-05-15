@@ -200,7 +200,10 @@ export default function ReplayLab() {
 
         <StackPanel color={ACCENT} title={<span>History</span>}>
           {replays.length === 0 ? (
-            <EmptyState icon={Repeat} message="No replays yet." />
+            <EmptyState
+              icon={Repeat}
+              message="No replays yet. Paste a past heartbeat run id above to auto-prefill, then swap the model to compare cheap vs expensive output."
+            />
           ) : (
             <ul className="flex flex-col gap-1 p-2">
               {replays.map((r) => (

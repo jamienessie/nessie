@@ -48,6 +48,7 @@ export function Activity() {
   const { selectedCompanyId } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const [filter, setFilter] = useState("all");
+  const [featureFilter, setFeatureFilter] = useState<string | null>(null);
 
   useEffect(() => {
     setBreadcrumbs([{ label: "Activity" }]);
@@ -109,10 +110,30 @@ export function Activity() {
     return <PageSkeleton variant="list" />;
   }
 
-  const filtered =
-    data && filter !== "all"
-      ? data.filter((e) => e.entityType === filter)
-      : data;
+  // Feature filter: action-prefix matching, layered on top of the
+  // existing entityType filter so operators can drill into a single
+  // post-Arena feature's audit trail.
+  const FEATURE_ACTION_PREFIXES: Record<string, string[]> = {
+    arena: ["arena."],
+    "auto-router": ["heartbeat.auto_routed"],
+    "pre-flight": ["heartbeat.preflight"],
+    consensus: ["heartbeat.consensus"],
+    replay: ["replay."],
+    coaching: ["agent.coaching"],
+    snippets: ["snippet."],
+    "bus-rules": ["bus_rule."],
+    behaviors: ["agent.behaviors_updated", "agent.preflight_override"],
+  };
+
+  const filtered = (() => {
+    let out = data ?? [];
+    if (filter !== "all") out = out.filter((e) => e.entityType === filter);
+    if (featureFilter) {
+      const prefixes = FEATURE_ACTION_PREFIXES[featureFilter] ?? [];
+      out = out.filter((e) => prefixes.some((p) => e.action.startsWith(p)));
+    }
+    return out;
+  })();
 
   const entityTypes = data
     ? [...new Set(data.map((e) => e.entityType))].sort()
@@ -120,6 +141,28 @@ export function Activity() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">feature</span>
+        <button
+          type="button"
+          onClick={() => setFeatureFilter(null)}
+          className={`rounded-full border px-2 py-0.5 text-[10px] font-mono ${featureFilter === null ? "bg-[#0d0c10] text-white" : "bg-background"}`}
+        >
+          all
+        </button>
+        {Object.keys(FEATURE_ACTION_PREFIXES).map((feature) => (
+          <button
+            key={feature}
+            type="button"
+            onClick={() => setFeatureFilter(feature === featureFilter ? null : feature)}
+            className={`rounded-full border px-2 py-0.5 text-[10px] font-mono ${
+              featureFilter === feature ? "bg-[#0d0c10] text-white" : "bg-background"
+            }`}
+          >
+            {feature}
+          </button>
+        ))}
+      </div>
       <div className="flex items-center justify-end">
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-[140px] h-8 text-xs">
