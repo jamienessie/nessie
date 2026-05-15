@@ -275,6 +275,12 @@ export async function createApp(
   // credential.
   const { credentialsRoutes } = await import("./routes/credentials.js");
   api.use(credentialsRoutes(db));
+  // "Today's Saves" — KPI rollup of the post-Arena feature wins
+  // (auto-routes, consensus runs, replays, preflight blocks, arena
+  // wins) over the current UTC day. Surfaced on the Dashboard so
+  // operators see the free-tier story being told.
+  const { savesTodayRoutes } = await import("./routes/saves-today.js");
+  api.use(savesTodayRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

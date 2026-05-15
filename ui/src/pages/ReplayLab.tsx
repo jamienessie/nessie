@@ -10,6 +10,7 @@ import { EmptyState } from "../components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { StackPanel, StackChip, StackKpi } from "@/components/stack";
 import { formatCents, formatNumber } from "../lib/utils";
+import { SnippetPicker } from "../components/SnippetPicker";
 
 const ACCENT = "#7C5CFF";
 
@@ -166,9 +167,15 @@ export default function ReplayLab() {
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="font-mono uppercase tracking-wider text-muted-foreground">
-                prompt
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="font-mono uppercase tracking-wider text-muted-foreground">
+                  prompt
+                </span>
+                <SnippetPicker
+                  companyId={companyId ?? null}
+                  onPick={(s) => setDraftPrompt(draftPrompt ? `${draftPrompt}\n\n${s.body}` : s.body)}
+                />
+              </div>
               <textarea
                 rows={6}
                 value={draftPrompt}

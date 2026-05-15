@@ -20,6 +20,7 @@ import {
   StackProgress,
 } from "@/components/stack";
 import { formatCents, formatNumber } from "../lib/utils";
+import { SnippetPicker } from "../components/SnippetPicker";
 
 const ACCENT = "#1FA7FF";
 const TABS = ["Compose", "History", "Leaderboard"] as const;
@@ -173,7 +174,13 @@ function ComposeTab({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">prompt</span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">prompt</span>
+            <SnippetPicker
+              companyId={companyId ?? null}
+              onPick={(s) => setPrompt(prompt ? `${prompt}\n\n${s.body}` : s.body)}
+            />
+          </div>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -256,8 +263,35 @@ function HistoryTab({
   const runs = runsQuery.data?.runs ?? [];
   const pinned = useMemo(() => runs.find((r) => r.id === pinnedRunId) ?? null, [runs, pinnedRunId]);
 
+  // B5 cross-feature nudge: if there's a clear leaderboard winner for
+  // the pinned run's taskType (or any judged run's task type), hint
+  // about Auto-Router. Lightweight: shown once per task type with a
+  // judged winner.
+  const judgedTaskTypes = useMemo(() => {
+    const seen = new Set<string>();
+    for (const r of runs) {
+      if (r.status === "judged" && r.winnerModel) seen.add(r.taskType);
+    }
+    return Array.from(seen);
+  }, [runs]);
+
   return (
     <div className="flex flex-col gap-4">
+      {judgedTaskTypes.length > 0 && (
+        <StackPanel color="#22C2A4" title={<span>Suggestion</span>}>
+          <div className="flex flex-col gap-2 p-3 text-xs">
+            <div>
+              You have judged Arena winners for{" "}
+              <span className="font-mono">{judgedTaskTypes.join(", ")}</span>.
+            </div>
+            <div>
+              Flip <span className="font-mono">Auto-Router</span> on for agents whose role matches one of these task types
+              (Behaviors page) so future heartbeat runs use the proven winner automatically.
+              Auto-Router also falls back to <span className="font-mono">"general"</span> and company-wide leaderboards.
+            </div>
+          </div>
+        </StackPanel>
+      )}
       {runsQuery.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading runs…</p>
       ) : runs.length === 0 ? (

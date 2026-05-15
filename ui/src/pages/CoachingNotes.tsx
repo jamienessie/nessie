@@ -10,6 +10,7 @@ import { EmptyState } from "../components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { StackPanel, StackChip } from "@/components/stack";
 import { AgentLabel } from "../components/AgentLabel";
+import { SnippetPicker } from "../components/SnippetPicker";
 
 const ACCENT = "#B872FF";
 
@@ -95,6 +96,10 @@ export default function CoachingNotes() {
             <Button disabled={!draft.trim() || create.isPending} onClick={() => create.mutate()}>
               {create.isPending ? "Adding…" : "Add note"}
             </Button>
+            <SnippetPicker
+              companyId={companyId ?? null}
+              onPick={(s) => setDraft(draft ? `${draft}\n${s.body}` : s.body)}
+            />
             {create.error && (
               <span className="text-xs text-rose-700">{(create.error as Error).message}</span>
             )}
