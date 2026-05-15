@@ -176,6 +176,7 @@ export function Sidebar() {
           <SidebarNavItem to="/snippets" label="Snippets" swatchColor="#FFB400" />
           <SidebarNavItem to="/replay" label="Replay Lab" swatchColor="#7C5CFF" />
           <SidebarNavItem to="/time-travel" label="Time Travel" swatchColor="#0d0c10" />
+          <SidebarNavItem to="/credentials" label="Credentials" swatchColor="#FFA94D" />
         </SidebarSection>
 
         <PluginSlotOutlet

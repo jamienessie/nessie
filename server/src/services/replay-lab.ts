@@ -10,6 +10,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@nessie/db";
 import { agents, heartbeatRuns, replayRuns } from "@nessie/db";
 import { logActivity } from "./activity-log.js";
+import { publishLiveEvent } from "./live-events.js";
 
 const PROXY_BASE = process.env.PAPERCLIP_PROXY_URL?.trim() || "http://127.0.0.1:7777";
 
@@ -219,6 +220,17 @@ export function replayLabService(db: Db): ReplayLabService {
         entityType: "replay_run",
         entityId: created.id,
         details: { overrideModel: input.overrideModel, costCents, latencyMs },
+      });
+      publishLiveEvent({
+        companyId: input.companyId,
+        type: "replay.completed",
+        payload: {
+          replayId: created.id,
+          originalRunId: input.originalRunId ?? null,
+          overrideModel: input.overrideModel,
+          costCents,
+          latencyMs,
+        },
       });
       return toReplay(updated);
     },

@@ -270,6 +270,11 @@ export async function createApp(
   // forcing the operator to hand-edit JSON on the agent config form.
   const { agentBehaviorsRoutes } = await import("./routes/agent-behaviors.js");
   api.use(agentBehaviorsRoutes(db));
+  // Credentials read-only surface for Quota Watchdog UI. Lists the
+  // pool with daily-quota state + last health observation per
+  // credential.
+  const { credentialsRoutes } = await import("./routes/credentials.js");
+  api.use(credentialsRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

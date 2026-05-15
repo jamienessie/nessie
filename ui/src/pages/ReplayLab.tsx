@@ -5,6 +5,7 @@ import { SUPPORTED_ARENA_MODELS } from "@nessie/shared";
 import { replayLabApi, type ReplayRun } from "../api/replayLab";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
+import { useInvalidateOnLiveEvent } from "../hooks/useInvalidateOnLiveEvent";
 import { EmptyState } from "../components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { StackPanel, StackChip, StackKpi } from "@/components/stack";
@@ -62,6 +63,16 @@ export default function ReplayLab() {
   useEffect(() => {
     setBreadcrumbs([{ label: "Replay" }]);
   }, [setBreadcrumbs]);
+
+  // Live-event bridge: refresh the replay list as new replays land
+  // (anywhere, including from other tabs / agent-callable invocations
+  // in v2). Pure data invalidation; no optimistic UI required.
+  useInvalidateOnLiveEvent({
+    companyId: companyId ?? null,
+    mapping: {
+      "replay.completed": [["replay-runs", companyId]],
+    },
+  });
 
   const listQuery = useQuery({
     queryKey: ["replay-runs", companyId],

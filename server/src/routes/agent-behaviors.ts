@@ -4,6 +4,7 @@ import type { Db } from "@nessie/db";
 import { agents } from "@nessie/db";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
 import { logActivity } from "../services/activity-log.js";
+import { publishLiveEvent } from "../services/live-events.js";
 
 // Per-agent "Behaviors" surface. A dedicated endpoint that flips the
 // next-up runtimeConfig flags introduced by Coaching Notes, Auto-Router,
@@ -176,6 +177,11 @@ export function agentBehaviorsRoutes(db: Db): Router {
       entityType: "agent",
       entityId: row.id,
       details: behaviors as unknown as Record<string, unknown>,
+    });
+    publishLiveEvent({
+      companyId,
+      type: "agent.behaviors_updated",
+      payload: { agentId: row.id, behaviors: behaviors as unknown as Record<string, unknown> },
     });
     res.json({ behaviors });
   });

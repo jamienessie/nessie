@@ -7661,6 +7661,19 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         routed.source === "leaderboard" && routed.model
           ? { ...tieredAdapterConfig, model: routed.model, autoRouterApplied: routed.reason }
           : tieredAdapterConfig;
+      if (routed.source === "leaderboard") {
+        publishLiveEvent({
+          companyId: agent.companyId,
+          type: "heartbeat.auto_routed",
+          payload: {
+            agentId: agent.id,
+            runId: run.id,
+            from: (tieredAdapterConfig as Record<string, unknown>).model ?? null,
+            to: routed.model,
+            reason: routed.reason ?? null,
+          },
+        });
+      }
       const agentForExecute = coachingPrefix
         ? {
             ...tieredAgent,
@@ -7704,6 +7717,11 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             entityId: agent.id,
             runId: run.id,
             details: { checks: preflight.checks },
+          });
+          publishLiveEvent({
+            companyId: agent.companyId,
+            type: "heartbeat.preflight_failed",
+            payload: { agentId: agent.id, runId: run.id, checks: preflight.checks },
           });
           return {
             exitCode: 1,
@@ -7758,6 +7776,18 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
           } satisfies Awaited<ReturnType<typeof adapter.execute>>;
         }
         await onLog("stdout", consensus.output.endsWith("\n") ? consensus.output : `${consensus.output}\n`);
+        publishLiveEvent({
+          companyId: agent.companyId,
+          type: "heartbeat.consensus_landed",
+          payload: {
+            agentId: agent.id,
+            runId: run.id,
+            arenaRunId: consensus.arenaRunId,
+            winnerModel: consensus.winnerModel,
+            costCents: consensus.costCents,
+            latencyMs: consensus.latencyMs,
+          },
+        });
         return {
           exitCode: 0,
           signal: null,

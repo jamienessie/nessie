@@ -1019,7 +1019,10 @@ export function AgentDetail() {
         <Tabs
           value={activeView}
           onValueChange={(value) => navigate(`/agents/${canonicalAgentRef}/${value}`)}
-        >
+        >{/* "coaching" and "behaviors" tabs route to top-level Cockpit
+            pages registered in App.tsx; the dashboard/instructions/skills
+            tabs render inside this component. The Tabs root accepts the
+            click and the navigate() call swaps the page. */}
           <PageTabBar
             items={[
               { value: "dashboard", label: "Dashboard" },
@@ -1028,6 +1031,8 @@ export function AgentDetail() {
               { value: "configuration", label: "Configuration" },
               { value: "runs", label: "Runs" },
               { value: "budget", label: "Budget" },
+              { value: "coaching", label: "Coaching" },
+              { value: "behaviors", label: "Behaviors" },
             ]}
             value={activeView}
             onValueChange={(value) => navigate(`/agents/${canonicalAgentRef}/${value}`)}
@@ -4000,14 +4005,63 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
               </pre>
             </div>
           )}
-          {run.resultJson && (
-            <div>
-              <div className="text-xs text-red-700 dark:text-red-300 mb-1">adapter result JSON</div>
-              <pre className="bg-red-50 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap text-red-800 dark:text-red-100">
-                {JSON.stringify(redactPathValue(run.resultJson, censorUsernameInLogs), null, 2)}
-              </pre>
-            </div>
-          )}
+          {run.resultJson && (() => {
+            const rj = run.resultJson as Record<string, unknown>;
+            const selfCritic = rj.selfCritic as { pass?: unknown; reasoning?: unknown } | undefined;
+            const consensus = rj.consensus as { winnerModel?: unknown; latencyMs?: unknown } | undefined;
+            const autoRouter = (run.resultJson as Record<string, unknown>).autoRouterApplied;
+            const preflight = rj.preflight as { ok?: unknown; checks?: unknown } | undefined;
+            return (
+              <div>
+                {(selfCritic || consensus || autoRouter || preflight) && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {selfCritic && typeof selfCritic.pass === "boolean" && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono"
+                        style={{ background: selfCritic.pass ? "#DCFCE7" : "#FEE2E2", borderColor: "#0d0c10" }}
+                        title={typeof selfCritic.reasoning === "string" ? selfCritic.reasoning : undefined}
+                      >
+                        self-critic: {selfCritic.pass ? "pass" : "fail"}
+                      </span>
+                    )}
+                    {consensus && typeof consensus.winnerModel === "string" && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono"
+                        style={{ background: "#FFF1B8", borderColor: "#0d0c10" }}
+                      >
+                        consensus: {consensus.winnerModel}
+                      </span>
+                    )}
+                    {typeof autoRouter === "string" && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono"
+                        style={{ background: "#DDD2FF", borderColor: "#0d0c10" }}
+                      >
+                        auto-routed: {autoRouter}
+                      </span>
+                    )}
+                    {preflight && typeof preflight.ok === "boolean" && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono"
+                        style={{ background: preflight.ok ? "#DCFCE7" : "#FEE2E2", borderColor: "#0d0c10" }}
+                      >
+                        pre-flight: {preflight.ok ? "passed" : "failed"}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {selfCritic && typeof selfCritic.reasoning === "string" && selfCritic.reasoning && (
+                  <div className="text-[11px] italic text-muted-foreground mb-2">
+                    grader: {selfCritic.reasoning}
+                  </div>
+                )}
+                <div className="text-xs text-red-700 dark:text-red-300 mb-1">adapter result JSON</div>
+                <pre className="bg-red-50 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap text-red-800 dark:text-red-100">
+                  {JSON.stringify(redactPathValue(run.resultJson, censorUsernameInLogs), null, 2)}
+                </pre>
+              </div>
+            );
+          })()}
           {run.stdoutExcerpt && run.stdoutExcerpt.trim() && !run.resultJson && (
             <div>
               <div className="text-xs text-red-700 dark:text-red-300 mb-1">stdout excerpt</div>

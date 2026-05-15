@@ -557,6 +557,15 @@ export const LIVE_EVENT_TYPES = [
   "arena.run.judged",
   "arena.run.cancelled",
   "arena.run.failed",
+  // Post-Arena features — Auto-Router applied, Pre-Flight failed,
+  // Consensus landed, Replay completed, per-agent Behaviors changed.
+  // Subscribed by AgentDetail / Replay Lab / dashboards so the surface
+  // updates without polling.
+  "heartbeat.auto_routed",
+  "heartbeat.preflight_failed",
+  "heartbeat.consensus_landed",
+  "replay.completed",
+  "agent.behaviors_updated",
 ] as const;
 export type LiveEventType = (typeof LIVE_EVENT_TYPES)[number];
 

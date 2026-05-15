@@ -7,6 +7,7 @@ import { agentBehaviorsApi, type AgentBehaviors } from "../api/agentBehaviors";
 import { agentsApi } from "../api/agents";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
+import { useInvalidateOnLiveEvent } from "../hooks/useInvalidateOnLiveEvent";
 import { Button } from "@/components/ui/button";
 import { StackPanel, StackChip } from "@/components/stack";
 import { AgentLabel } from "../components/AgentLabel";
@@ -52,6 +53,15 @@ export default function AgentBehaviorsPage() {
   useEffect(() => {
     setBreadcrumbs([{ label: "Behaviors" }]);
   }, [setBreadcrumbs]);
+
+  // Live-event bridge: if another tab updates the same agent's
+  // behaviors, refresh ours so we don't post a stale write.
+  useInvalidateOnLiveEvent({
+    companyId: companyId ?? null,
+    mapping: {
+      "agent.behaviors_updated": [["agent-behaviors", agentId]],
+    },
+  });
 
   const behaviorsQuery = useQuery({
     queryKey: ["agent-behaviors", agentId, companyId],

@@ -50,6 +50,7 @@ import Snippets from "./pages/Snippets";
 import ReplayLab from "./pages/ReplayLab";
 import TimeTravel from "./pages/TimeTravel";
 import AgentBehaviors from "./pages/AgentBehaviors";
+import Credentials from "./pages/Credentials";
 import { PlugInJanitor } from "./pages/PlugInJanitor";
 import { CompanySettings } from "./pages/CompanySettings";
 import { CompanyEnvironments } from "./pages/CompanyEnvironments";
@@ -163,6 +164,7 @@ function boardRoutes() {
       <Route path="snippets" element={<Snippets />} />
       <Route path="replay" element={<ReplayLab />} />
       <Route path="time-travel" element={<TimeTravel />} />
+      <Route path="credentials" element={<Credentials />} />
       <Route path="agents/:agentId/reputation" element={<Reputation />} />
       <Route path="agents/:agentId/coaching" element={<CoachingNotes />} />
       <Route path="agents/:agentId/behaviors" element={<AgentBehaviors />} />
