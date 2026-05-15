@@ -81,6 +81,11 @@ import {
   type RunLivenessClassificationInput,
 } from "./run-liveness.js";
 import { logActivity, publishPluginDomainEvent, type LogActivityInput } from "./activity-log.js";
+import { coachingNotesService } from "./coaching-notes.js";
+import { resolveAutoRoutedModel } from "./auto-router.js";
+import { runPreFlightChecks } from "./preflight-check.js";
+import { runConsensus } from "./consensus.js";
+import { blackBoxRecorder } from "./black-box.js";
 import {
   buildWorkspaceReadyComment,
   cleanupExecutionWorkspaceArtifacts,
@@ -3759,6 +3764,28 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
         finishedAt: run.finishedAt ? new Date(run.finishedAt).toISOString() : null,
       },
     });
+    // Phase 6: forensic snapshot keyed by run id. Fire-and-forget so a
+    // black-box write failure can't break the run lifecycle.
+    const label = run.status === "running" ? "started"
+      : run.status === "succeeded" ? "finished"
+      : run.status === "failed" || run.status === "timed_out" ? "failed"
+      : run.status === "cancelled" ? "cancelled"
+      : null;
+    if (label) {
+      void blackBoxRecorder(db).record({
+        scope: "run",
+        scopeId: run.id,
+        label,
+        snapshot: {
+          agentId: run.agentId,
+          status: run.status,
+          invocationSource: run.invocationSource,
+          errorCode: run.errorCode ?? null,
+        },
+      }).catch((err) => {
+        console.warn(`[heartbeat] black-box record failed for run ${run.id}:`, err);
+      });
+    }
   }
 
   async function setWakeupStatus(
@@ -7607,9 +7634,204 @@ export function heartbeatService(db: Db, options: HeartbeatServiceOptions = {}) 
             },
           }
         : agent;
+      // Coaching Notes: any operator-curated active notes get prepended
+      // to the agent's systemPrompt so cheap models re-receive standing
+      // guidance every run. For adapters that don't read systemPrompt
+      // (claude_local, codex_local), the same prefix is also stamped on
+      // runtimeConfig.coachingPrefix and surfaced via context.coachingPrefix
+      // so adapter-specific bundle assemblers can pick it up.
+      const coachingPrefix = await coachingNotesService(db).assemblePrefix(agent.companyId, agent.id);
+      if (coachingPrefix) {
+        (context as Record<string, unknown>).coachingPrefix = coachingPrefix;
+      }
+      // Auto-Router: if runtimeConfig.autoRouter === true, consult the
+      // Arena leaderboard for the agent's role and override
+      // adapterConfig.model with the proven winner. Fails closed (keeps
+      // configured model) on any mismatch — see auto-router.ts.
+      const routed = await resolveAutoRoutedModel(db, {
+        id: agent.id,
+        companyId: agent.companyId,
+        role: agent.role,
+        runtimeConfig: agent.runtimeConfig as Record<string, unknown> | null,
+        adapterConfig: tieredAgent.adapterConfig as Record<string, unknown> | null,
+        tier: (agent as { tier?: string | null }).tier ?? null,
+      });
+      const tieredAdapterConfig = (tieredAgent.adapterConfig as Record<string, unknown> | null | undefined) ?? {};
+      const baseAdapterConfig: Record<string, unknown> =
+        routed.source === "leaderboard" && routed.model
+          ? { ...tieredAdapterConfig, model: routed.model, autoRouterApplied: routed.reason }
+          : tieredAdapterConfig;
+      if (routed.source === "leaderboard") {
+        publishLiveEvent({
+          companyId: agent.companyId,
+          type: "heartbeat.auto_routed",
+          payload: {
+            agentId: agent.id,
+            runId: run.id,
+            from: (tieredAdapterConfig as Record<string, unknown>).model ?? null,
+            to: routed.model,
+            reason: routed.reason ?? null,
+          },
+        });
+      }
+      const agentForExecute = coachingPrefix
+        ? {
+            ...tieredAgent,
+            runtimeConfig: {
+              ...((tieredAgent.runtimeConfig as Record<string, unknown> | null | undefined) ?? {}),
+              coachingPrefix,
+            },
+            adapterConfig: {
+              ...baseAdapterConfig,
+              systemPrompt: (() => {
+                const existing = baseAdapterConfig.systemPrompt;
+                const existingStr = typeof existing === "string" ? existing : "";
+                return existingStr ? `${coachingPrefix}\n${existingStr}` : coachingPrefix;
+              })(),
+            },
+          }
+        : { ...tieredAgent, adapterConfig: baseAdapterConfig };
+      // Pre-Flight Check: when runtimeConfig.preFlight === true, run a
+      // deterministic checklist (workspace exists, git clean, branch up
+      // to date) before dispatching to the adapter. Failures abort the
+      // run with a structured preflight_failed result so the operator
+      // can see exactly what went wrong without burning any tokens.
+      // Operator can bypass via runtimeConfig.preFlightOverrideUntil
+      // (ISO 8601 timestamp); the override is consumed each run by
+      // checking it's still in the future, audit-logged as
+      // heartbeat.preflight_overridden.
+      const rcRecord = (agent.runtimeConfig as Record<string, unknown> | null) ?? {};
+      const overrideUntil = typeof rcRecord.preFlightOverrideUntil === "string"
+        ? new Date(rcRecord.preFlightOverrideUntil)
+        : null;
+      const overrideActive = overrideUntil && !Number.isNaN(overrideUntil.getTime()) && overrideUntil.getTime() > Date.now();
+      if (overrideActive) {
+        await logActivity(db, {
+          companyId: agent.companyId,
+          actorType: "system",
+          actorId: "nessie-preflight",
+          action: "heartbeat.preflight_overridden",
+          entityType: "agent",
+          entityId: agent.id,
+          runId: run.id,
+          details: { overrideUntil: overrideUntil!.toISOString() },
+        });
+      }
+      if (
+        !overrideActive &&
+        agent.runtimeConfig &&
+        typeof agent.runtimeConfig === "object" &&
+        (agent.runtimeConfig as Record<string, unknown>).preFlight === true
+      ) {
+        const preflightCwd = executionTarget && typeof executionTarget === "object"
+          ? ((executionTarget as { cwd?: unknown }).cwd ?? null)
+          : null;
+        const preflight = await runPreFlightChecks({
+          cwd: typeof preflightCwd === "string" ? preflightCwd : null,
+        });
+        if (!preflight.ok) {
+          await logActivity(db, {
+            companyId: agent.companyId,
+            actorType: "system",
+            actorId: "nessie-preflight",
+            action: "heartbeat.preflight_failed",
+            entityType: "agent",
+            entityId: agent.id,
+            runId: run.id,
+            details: { checks: preflight.checks },
+          });
+          publishLiveEvent({
+            companyId: agent.companyId,
+            type: "heartbeat.preflight_failed",
+            payload: { agentId: agent.id, runId: run.id, checks: preflight.checks },
+          });
+          return {
+            exitCode: 1,
+            signal: null,
+            timedOut: false,
+            errorCode: "preflight_failed",
+            errorMessage: `pre-flight checks failed: ${preflight.checks
+              .filter((c) => c.status === "fail")
+              .map((c) => `${c.name}(${c.detail ?? ""})`)
+              .join("; ")}`,
+            resultJson: { preflight },
+          } satisfies Awaited<ReturnType<typeof adapter.execute>>;
+        }
+      }
+      // Consensus Mode: when runtimeConfig.consensus.enabled === true
+      // and a model list is configured, fan out to N cheap models inline
+      // through the Arena pipeline and return the judge-picked winner
+      // as the agent's output. Skips adapter.execute entirely.
+      const consensusConfig = (agent.runtimeConfig && typeof agent.runtimeConfig === "object")
+        ? (agent.runtimeConfig as Record<string, unknown>).consensus
+        : null;
+      if (
+        consensusConfig &&
+        typeof consensusConfig === "object" &&
+        (consensusConfig as Record<string, unknown>).enabled === true
+      ) {
+        const cc = consensusConfig as Record<string, unknown>;
+        const models = Array.isArray(cc.models)
+          ? (cc.models as unknown[]).filter((m): m is string => typeof m === "string")
+          : [];
+        const promptText = typeof context.prompt === "string"
+          ? (context as Record<string, unknown>).prompt as string
+          : JSON.stringify(context);
+        const judgeModel = typeof cc.judgeModel === "string" ? cc.judgeModel : undefined;
+        const taskType = typeof cc.taskType === "string" ? cc.taskType : agent.role;
+        const consensus = await runConsensus(db, {
+          companyId: agent.companyId,
+          taskType,
+          prompt: promptText,
+          models,
+          judgeModel,
+          requestedByAgentId: agent.id,
+        });
+        if (!consensus.ok) {
+          return {
+            exitCode: 1,
+            signal: null,
+            timedOut: false,
+            errorCode: "consensus_failed",
+            errorMessage: consensus.error,
+            resultJson: { consensus },
+          } satisfies Awaited<ReturnType<typeof adapter.execute>>;
+        }
+        await onLog("stdout", consensus.output.endsWith("\n") ? consensus.output : `${consensus.output}\n`);
+        publishLiveEvent({
+          companyId: agent.companyId,
+          type: "heartbeat.consensus_landed",
+          payload: {
+            agentId: agent.id,
+            runId: run.id,
+            arenaRunId: consensus.arenaRunId,
+            winnerModel: consensus.winnerModel,
+            costCents: consensus.costCents,
+            latencyMs: consensus.latencyMs,
+          },
+        });
+        return {
+          exitCode: 0,
+          signal: null,
+          timedOut: false,
+          provider: "nessie_consensus",
+          biller: "nessie_consensus",
+          model: consensus.winnerModel,
+          billingType: "metered_api",
+          summary: consensus.output.slice(0, 200),
+          resultJson: {
+            consensus: {
+              arenaRunId: consensus.arenaRunId,
+              winnerModel: consensus.winnerModel,
+              latencyMs: consensus.latencyMs,
+              perCandidate: consensus.perCandidate,
+            },
+          },
+        } satisfies Awaited<ReturnType<typeof adapter.execute>>;
+      }
       const adapterResult = await adapter.execute({
         runId: run.id,
-        agent: tieredAgent,
+        agent: agentForExecute,
         runtime: runtimeForAdapter,
         config: runtimeConfig,
         context,

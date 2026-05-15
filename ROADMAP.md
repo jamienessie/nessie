@@ -71,19 +71,37 @@ Each is one new schema + service + REST + Cockpit panel:
 - **Demo Recorder** (§20.50) — `demo_recordings`.
 - **Explain This System Mode** (§20.51) — pulls from docs + Code Atlas + decision records.
 
+## Hardening pass (pre-feature cleanup)
+
+A pre-feature audit pass landed before the v0.8 wave 2 work started:
+
+- Activity logging fully wired across mutating endpoints in
+  `meetings`, `hires`, `trust-layer`, and `executive-briefs` routes.
+  Every mutation now writes an `activity_log` row per `AGENTS.md` Rule 3.
+- Cost-tier proxy (`packages/proxy`) has Vitest coverage on `router`,
+  `cost-meter`, `credentials`, and `tos-dial` (34 tests).
+- Bus autonomy gating, send rewrap, and reputation aggregation
+  covered by unit tests (`agent-permissions.test.ts`,
+  `agent-bus.test.ts`, `reputation.test.ts`).
+- Black-box recorder now auto-records: heartbeat run lifecycle
+  transitions, meeting state transitions + outcome approvals, and
+  agent mint events.
+
 ## Engineering loose ends
 
 These don't add features but tighten the spine:
 
-- **Heartbeat tier stamping** — wire `agents.tier` (Phase 2) through the heartbeat scheduler so adapter invocations carry `X-Nessie-Tier` automatically. The two new adapters (Phase 1) already accept it; one-liner read in `services/heartbeat.ts`.
+- ~~Heartbeat tier stamping~~ — **shipped**. `X-Nessie-Tier` is stamped from
+  `agents.tier` in `server/src/services/heartbeat.ts:7596-7611`.
+- ~~Black-box auto-recording~~ — **shipped** for run / meeting / hire scopes.
 - **Self-host Geist fonts** — currently loaded from Google Fonts CDN. Self-host at `ui/public/fonts/`.
 - **Pixel parity with the cockpit reference** — Phase 5 ships structurally faithful screens; refining each panel against the design HTML is iterative.
 - **Drill-down reskins** — `/agents/:id`, `/issues/:id`, `/approvals/:id` still render the legacy Layout. Reskin onto `<Panel>` + `<AgentLabel>`.
 - **SSE meeting transcripts** — `/api/meetings/:id/messages` is currently polled. Wire to SSE.
 - **Real `applyOutcomeEffects`** — Phase 3's outcome applier stubs creation. Real wiring to issues / decision_records / institutional memory.
-- **Black-box auto-recording** — heartbeat / meetings / hires don't write snapshots automatically; needs a recorder hook.
 - **Hard delete of legacy adapters** — `cursor-local`, `gemini-local`, `opencode-local`, `acpx-local`, `pi-local`, `openclaw-gateway` were soft-stripped in Phase 1. Real deletion is a tree cleanup any time.
 - **`pnpm dev` orchestrator (`dev-runner.ts`) tsx resolution** — `pnpm dev:server` works; the combined `pnpm dev` hits a Windows pnpm-exec quirk on tsx. Workaround: run `dev:server` and `dev:ui` separately.
+- **Heartbeat service split** — `server/src/services/heartbeat.ts` is ~9.7k lines. Worth extracting workspace handling, cost tracking, and adapter dispatch into siblings as its own dedicated PR.
 
 ## Out of scope for v1
 

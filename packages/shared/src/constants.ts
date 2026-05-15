@@ -79,6 +79,22 @@ export const WORKSPACE_BRANCH_ROUTINE_VARIABLE = "workspaceBranch";
 export const MODEL_PROFILE_KEYS = ["cheap"] as const;
 export type ModelProfileKey = (typeof MODEL_PROFILE_KEYS)[number];
 
+// Tier-prefixed aliases the cost-tier proxy can route to today. The Model
+// Arena UI uses this as the candidate-model picker source so the proxy
+// catalog and the operator-facing list never drift. T1 aliases are
+// deliberately excluded — they require the NESSIE_TOS_AWARENESS dial and
+// aren't safe defaults for fan-out fan-out experiments.
+export const SUPPORTED_ARENA_MODELS = [
+  "t2:gpt-4o-mini",
+  "t2:gpt-4o",
+  "t2:claude-3-5-sonnet",
+  "t3:llama-3.1-70b",
+  "t3:llama-3.1-8b",
+  "t3:mixtral-8x7b",
+] as const;
+export type SupportedArenaModel = (typeof SUPPORTED_ARENA_MODELS)[number];
+export const DEFAULT_ARENA_JUDGE_MODEL = "t2:gpt-4o";
+
 export const AGENT_ICON_NAMES = [
   "bot",
   "cpu",
@@ -355,7 +371,7 @@ export type RoutineRunStatus = (typeof ROUTINE_RUN_STATUSES)[number];
 export const ROUTINE_RUN_SOURCES = ["schedule", "manual", "api", "webhook"] as const;
 export type RoutineRunSource = (typeof ROUTINE_RUN_SOURCES)[number];
 
-export const PAUSE_REASONS = ["manual", "budget", "system"] as const;
+export const PAUSE_REASONS = ["manual", "budget", "system", "panic_stop"] as const;
 export type PauseReason = (typeof PAUSE_REASONS)[number];
 
 export const PROJECT_COLORS = [
@@ -533,6 +549,23 @@ export const LIVE_EVENT_TYPES = [
   // Plug-In Janitor sweep completion — Hank fires this after a sweep so
   // the operator's /plug-in-janitor page refreshes without polling.
   "janitor.sweep.completed",
+  // Model Arena lifecycle — fan-out, per-result completion, judge verdict,
+  // cancellation, and failure. The Cockpit /arena page subscribes to these
+  // so each candidate card updates as its upstream call settles.
+  "arena.run.started",
+  "arena.run.result_landed",
+  "arena.run.judged",
+  "arena.run.cancelled",
+  "arena.run.failed",
+  // Post-Arena features — Auto-Router applied, Pre-Flight failed,
+  // Consensus landed, Replay completed, per-agent Behaviors changed.
+  // Subscribed by AgentDetail / Replay Lab / dashboards so the surface
+  // updates without polling.
+  "heartbeat.auto_routed",
+  "heartbeat.preflight_failed",
+  "heartbeat.consensus_landed",
+  "replay.completed",
+  "agent.behaviors_updated",
 ] as const;
 export type LiveEventType = (typeof LIVE_EVENT_TYPES)[number];
 

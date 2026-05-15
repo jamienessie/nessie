@@ -23,6 +23,7 @@ import type {
 } from "@nessie/shared";
 import { notFound, unprocessable } from "../errors.js";
 import { logActivity } from "./activity-log.js";
+import { sendFromOperator } from "./agent-bus-helpers.js";
 
 type ScopeRecord = {
   companyId: string;
@@ -391,7 +392,7 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
         .then((rows) => rows[0] ?? null)
       : null;
 
-    return db
+    const incident = await db
       .insert(budgetIncidents)
       .values({
         companyId: policy.companyId,
@@ -410,6 +411,24 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
       })
       .returning()
       .then((rows) => rows[0] ?? null);
+    if (incident && thresholdType === "hard") {
+      await sendFromOperator(db, policy.companyId, {
+        kind: "incident_escalation",
+        payload: {
+          scope: policy.scopeType,
+          scopeId: policy.scopeId,
+          incidentId: incident.id,
+          policyId: policy.id,
+          amountObserved,
+          amountLimit: policy.amount,
+          metric: policy.metric,
+          windowKind: policy.windowKind,
+        },
+      }).catch((err) => {
+        console.warn(`[budgets] incident_escalation bus enqueue failed for incident ${incident.id}:`, err);
+      });
+    }
+    return incident;
   }
 
   async function resolveOpenSoftIncidents(policyId: string) {

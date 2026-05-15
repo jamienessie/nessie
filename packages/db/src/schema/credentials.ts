@@ -28,6 +28,13 @@ export const credentials = pgTable(
     status: text("status").notNull().default("active"), // active | paused | exhausted | auth_failed | disabled
     monthlyCapCents: integer("monthly_cap_cents"), // null = no cap
     monthlySpentCents: integer("monthly_spent_cents").notNull().default(0),
+    // Plan §next-up Quota Watchdog. Free credentials (T3) are typically
+    // bound by daily request count, not by $-spend. Watchdog rotates
+    // credentials before hitting the daily cap; counts reset at
+    // dailyResetAt (UTC midnight by default, configurable per provider).
+    dailyRequestCap: integer("daily_request_cap"), // null = no cap
+    dailyRequestCount: integer("daily_request_count").notNull().default(0),
+    dailyResetAt: timestamp("daily_reset_at", { withTimezone: true }),
     capabilities: text("capabilities").array().notNull().default([]), // ['tool_calling','coding','vision','reasoning']
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

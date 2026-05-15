@@ -18,8 +18,10 @@ import {
   ShieldCheck,
   Sparkles,
   ScrollText,
+  OctagonX,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink } from "@/lib/router";
 import { SidebarSection } from "./SidebarSection";
 import { SidebarNavItem } from "./SidebarNavItem";
@@ -28,6 +30,8 @@ import { SidebarAgents } from "./SidebarAgents";
 import { useDialogActions } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { heartbeatsApi } from "../api/heartbeats";
+import { companiesApi } from "../api/companies";
+import { useInvalidateOnLiveEvent } from "../hooks/useInvalidateOnLiveEvent";
 import { instanceSettingsApi } from "../api/instanceSettings";
 import { queryKeys } from "../lib/queryKeys";
 import { useInboxBadge } from "../hooks/useInboxBadge";
@@ -44,14 +48,44 @@ export function Sidebar() {
     queryKey: queryKeys.instance.experimentalSettings,
     queryFn: () => instanceSettingsApi.getExperimental(),
   });
+  const liveRunsKey = selectedCompanyId ? queryKeys.liveRuns(selectedCompanyId) : ["liveRuns", "none"];
   const { data: liveRuns } = useQuery({
-    queryKey: queryKeys.liveRuns(selectedCompanyId!),
+    queryKey: liveRunsKey,
     queryFn: () => heartbeatsApi.liveRunsForCompany(selectedCompanyId!),
     enabled: !!selectedCompanyId,
-    refetchInterval: 10_000,
+  });
+  // Replace 10s polling with WS-driven invalidation. Server publishes
+  // heartbeat.run.* on every run lifecycle change.
+  useInvalidateOnLiveEvent({
+    companyId: selectedCompanyId ?? null,
+    mapping: {
+      "heartbeat.run.queued": [liveRunsKey],
+      "heartbeat.run.status": [liveRunsKey],
+    },
   });
   const liveRunCount = liveRuns?.length ?? 0;
   const showWorkspacesLink = experimentalSettings?.enableIsolatedWorkspaces === true;
+
+  const queryClient = useQueryClient();
+  const [panicResult, setPanicResult] = useState<{ pausedCount: number; runsCancelled: number } | null>(null);
+  const panicStopMutation = useMutation({
+    mutationFn: (companyId: string) => companiesApi.panicStop(companyId),
+    onSuccess: (result) => {
+      setPanicResult({ pausedCount: result.pausedCount, runsCancelled: result.runsCancelled });
+      void queryClient.invalidateQueries();
+    },
+  });
+  const handlePanicStop = () => {
+    if (!selectedCompanyId || panicStopMutation.isPending) return;
+    const confirmed = window.confirm(
+      "Panic Stop: pause every agent in this company and abort every in-flight run.\n\n" +
+        "Use this if your machine is being pushed too hard (high GPU temps, fans pegged, " +
+        "power cutting out). You can resume agents one by one afterward.\n\n" +
+        "Proceed?",
+    );
+    if (!confirmed) return;
+    panicStopMutation.mutate(selectedCompanyId);
+  };
 
   const pluginContext = {
     companyId: selectedCompanyId,
@@ -104,6 +138,30 @@ export function Sidebar() {
         <span className="font-mono text-[9.5px] text-[#888] border border-[#444] px-1">C</span>
       </button>
 
+      {/* Panic Stop — emergency pause-all + cancel-all-runs for when the
+          host machine is being pushed beyond its PSU / thermal envelope. */}
+      {selectedCompanyId ? (
+        <button
+          onClick={handlePanicStop}
+          disabled={panicStopMutation.isPending}
+          className="flex items-center gap-2 px-3 py-2 bg-[#fffaf0] text-[#0d0c10] border-[2px] border-[#0d0c10] font-bold text-[13px] tracking-tight disabled:opacity-60"
+          style={{ boxShadow: "4px 4px 0 0 #FF3FA4" }}
+          title="Pause every agent and abort every in-flight run"
+          aria-label="Panic Stop"
+        >
+          <OctagonX className="w-3.5 h-3.5 shrink-0 text-[#FF3FA4]" />
+          <span className="truncate">
+            {panicStopMutation.isPending ? "Stopping…" : "Panic Stop"}
+          </span>
+          <span className="flex-1" />
+          {panicResult ? (
+            <span className="font-mono text-[9.5px] text-[#5a525e] border border-[#5a525e] px-1">
+              {panicResult.pausedCount}p · {panicResult.runsCancelled}r
+            </span>
+          ) : null}
+        </button>
+      ) : null}
+
       {/* Voice mode — opens an in-app mic modal to talk to the CEO. */}
       <VoiceModeButton />
 
@@ -151,6 +209,7 @@ export function Sidebar() {
         <SidebarSection label="OPERATOR">
           <SidebarNavItem to="/chief-of-staff" label="Chief of Staff" swatchColor="#FF6B9A" />
           <SidebarNavItem to="/briefs" label="Briefs" swatchColor="#FFB400" />
+          <SidebarNavItem to="/inbox-capture" label="Capture" swatchColor="#7C5CFF" />
           <SidebarNavItem to="/dreams" label="Dream Journal" swatchColor="#7C5CFF" />
           <SidebarNavItem to="/companies/generate" label="Generate Company" swatchColor="#FFC83A" />
           <SidebarNavItem to="/clipmart" label="ClipMart" swatchColor="#1FA7FF" />
@@ -158,6 +217,14 @@ export function Sidebar() {
           <SidebarNavItem to="/hiring" label="Hiring" swatchColor="#5B8DEF" />
           <SidebarNavItem to="/meetings" label="Meetings" swatchColor="#B872FF" />
           <SidebarNavItem to="/trust-layer" label="Trust Layer" swatchColor="#22C2A4" />
+          <SidebarNavItem to="/bus" label="Bus" swatchColor="#22C2A4" />
+          <SidebarNavItem to="/black-box" label="Black Box" swatchColor="#0d0c10" />
+          <SidebarNavItem to="/trust-receipts" label="Trust Receipts" swatchColor="#27D17F" />
+          <SidebarNavItem to="/arena" label="Arena" swatchColor="#1FA7FF" />
+          <SidebarNavItem to="/snippets" label="Snippets" swatchColor="#FFB400" />
+          <SidebarNavItem to="/replay" label="Replay Lab" swatchColor="#7C5CFF" />
+          <SidebarNavItem to="/time-travel" label="Time Travel" swatchColor="#0d0c10" />
+          <SidebarNavItem to="/credentials" label="Credentials" swatchColor="#FFA94D" />
         </SidebarSection>
 
         <PluginSlotOutlet

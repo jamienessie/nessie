@@ -13,6 +13,8 @@ import {
   type MeetingOutcomeKind,
 } from "./meeting-write-policy.js";
 import { publishLiveEvent } from "./live-events.js";
+import { blackBoxRecorder } from "./black-box.js";
+import { sendFromOperator } from "./agent-bus-helpers.js";
 
 // Meetings service.
 //
@@ -166,6 +168,12 @@ export class MeetingsService {
       type: "meeting.transitioned",
       payload: { meetingId, from, to, meeting: updated },
     });
+    await blackBoxRecorder(this.db).record({
+      scope: "meeting",
+      scopeId: meetingId,
+      label: "transitioned",
+      snapshot: { from, to },
+    });
     return updated;
   }
 
@@ -200,6 +208,13 @@ export class MeetingsService {
             companyId: meeting.companyId,
             type: "meeting.participant.added",
             payload: { meetingId, participant: created },
+          });
+          await sendFromOperator(this.db, meeting.companyId, {
+            kind: "meeting_invite",
+            toAgentId: speaker.agentId,
+            payload: { meetingId, role, meetingTitle: meeting.title },
+          }).catch((err) => {
+            console.warn(`[meetings] meeting_invite bus enqueue failed for ${meetingId}:`, err);
           });
         }
       }
@@ -331,6 +346,12 @@ export class MeetingsService {
           companyId: meeting.companyId,
           type: "meeting.outcome.approved",
           payload: { meetingId: updated.meetingId, outcome: updated },
+        });
+        await blackBoxRecorder(this.db).record({
+          scope: "meeting",
+          scopeId: updated.meetingId,
+          label: "outcome_approved",
+          snapshot: { outcomeId: updated.id, kind: updated.kind },
         });
       }
     }

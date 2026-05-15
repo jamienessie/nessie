@@ -27,6 +27,9 @@ export function CompanySettingsSidebar() {
     },
     enabled: !!selectedCompanyId,
     retry: false,
+    // TODO(W8 follow-up): once invite.created / invite.accepted live event
+    // types are emitted from the invites service, swap this 15s poll for
+    // useInvalidateOnLiveEvent like Sidebar / SidebarAgents.
     refetchInterval: 15_000,
   });
 

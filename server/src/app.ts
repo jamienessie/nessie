@@ -228,8 +228,69 @@ export async function createApp(
   const { trustLayerRoutes } = await import("./routes/trust-layer.js");
   api.use(trustLayerRoutes(db));
   // Phase 7 starter pack: Inbox, Operator Constitution, Trust Receipts.
-  const { v0_8Routes } = await import("./routes/v0_8.js");
-  api.use(v0_8Routes(db));
+  const { inboxItemsRoutes } = await import("./routes/inbox-items.js");
+  const { operatorConstitutionRoutes } = await import("./routes/operator-constitution.js");
+  const { trustReceiptsRoutes } = await import("./routes/trust-receipts.js");
+  api.use(inboxItemsRoutes(db));
+  api.use(operatorConstitutionRoutes(db));
+  api.use(trustReceiptsRoutes(db));
+  // Model Arena (§20.6). Standalone fan-out of a prompt across N
+  // candidate models, judged by a single LLM call, with leaderboard rollup.
+  const { arenaRoutes } = await import("./routes/arena.js");
+  api.use(arenaRoutes(db));
+  // Coaching Notes — operator-curated persistent guidance per agent,
+  // prepended to the agent's system prompt at heartbeat dispatch time.
+  const { coachingNotesRoutes } = await import("./routes/coaching-notes.js");
+  api.use(coachingNotesRoutes(db));
+  // Snippet Library — versioned operator-curated prompt snippets reusable
+  // across Arena Compose, agent instructions editor, Replay Lab.
+  const { snippetsRoutes } = await import("./routes/snippets.js");
+  api.use(snippetsRoutes(db));
+  // Auto-Router — closes the Arena loop. Heartbeat dispatch consults the
+  // leaderboard to override the agent's configured model with the proven
+  // winner. Preview endpoint exposed here.
+  const { autoRouterRoutes } = await import("./routes/auto-router.js");
+  api.use(autoRouterRoutes(db));
+  // Bus Auto-Reply Rules — operator-defined rule engine that auto-handles
+  // specific bus message shapes (dismiss / auto_reply) before the
+  // operator inbox renders them.
+  const { busAutoReplyRulesRoutes } = await import("./routes/bus-auto-reply-rules.js");
+  api.use(busAutoReplyRulesRoutes(db));
+  // Replay Lab — re-run any past heartbeat run (or ad-hoc prompt) with
+  // model/prompt/system-prompt overrides. Side-by-side rendered against
+  // the original on the /replay Cockpit page.
+  const { replayLabRoutes } = await import("./routes/replay-lab.js");
+  api.use(replayLabRoutes(db));
+  // Time Travel Inspector — reconstruct past Cockpit state by replaying
+  // activity_log + black_box_records snapshots up to a chosen timestamp.
+  const { timeTravelRoutes } = await import("./routes/time-travel.js");
+  api.use(timeTravelRoutes(db));
+  // Agent Behaviors — per-agent toggles for the next-up runtimeConfig
+  // flags (Auto-Router, Pre-Flight, Self-Critic, Consensus). Avoids
+  // forcing the operator to hand-edit JSON on the agent config form.
+  const { agentBehaviorsRoutes } = await import("./routes/agent-behaviors.js");
+  api.use(agentBehaviorsRoutes(db));
+  // Credentials read-only surface for Quota Watchdog UI. Lists the
+  // pool with daily-quota state + last health observation per
+  // credential.
+  const { credentialsRoutes } = await import("./routes/credentials.js");
+  api.use(credentialsRoutes(db));
+  // Panic Stop — emergency pause-everything button. Pauses every
+  // non-terminated agent in the company + aborts every in-flight
+  // heartbeat run. For when the host machine is in PSU / thermal trouble.
+  const { panicStopRoutes } = await import("./routes/panic-stop.js");
+  api.use(panicStopRoutes(db, { pluginWorkerManager: workerManager }));
+  // "Today's Saves" — KPI rollup of the post-Arena feature wins
+  // (auto-routes, consensus runs, replays, preflight blocks, arena
+  // wins) over the current UTC day. Surfaced on the Dashboard so
+  // operators see the free-tier story being told.
+  const { savesTodayRoutes } = await import("./routes/saves-today.js");
+  api.use(savesTodayRoutes(db));
+  // Agent next-run preview — computes the assembled system prompt
+  // (with coaching prefix), the picked model (after Auto-Router),
+  // and the active behaviors. Read-only sanity check.
+  const { agentPreviewRoutes } = await import("./routes/agent-preview.js");
+  api.use(agentPreviewRoutes(db));
   // Phase 8: Wave 2 (Chief of Staff, Executive Briefs, Disaster Recovery).
   const { chiefOfStaffRoutes } = await import("./routes/chief-of-staff.js");
   const { executiveBriefRoutes } = await import("./routes/executive-briefs.js");

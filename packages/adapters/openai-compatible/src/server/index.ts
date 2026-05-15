@@ -30,6 +30,12 @@ interface OpenAiAdapterConfig {
   maxTokens?: number;
   proxyUrl?: string;
   operatorTriggered?: boolean;
+  // Plan §next-up Output Self-Critic. When true, after the primary call
+  // the adapter does a second cheap call asking the same model to grade
+  // its own output against a 4-line rubric. On a fail verdict the
+  // adapter does one retry with the critique appended. Bounded to one
+  // retry so the worst case is 3 cheap calls instead of 1.
+  selfCritic?: boolean;
 }
 
 function readConfig(raw: unknown): OpenAiAdapterConfig {
@@ -44,6 +50,90 @@ function readConfig(raw: unknown): OpenAiAdapterConfig {
     maxTokens: typeof obj.maxTokens === "number" ? obj.maxTokens : undefined,
     proxyUrl: typeof obj.proxyUrl === "string" ? obj.proxyUrl : undefined,
     operatorTriggered: typeof obj.operatorTriggered === "boolean" ? obj.operatorTriggered : undefined,
+    selfCritic: typeof obj.selfCritic === "boolean" ? obj.selfCritic : undefined,
+  };
+}
+
+// Output Self-Critic helper. Calls the same model with a structured
+// rubric prompt and parses a JSON verdict. Returns null if the model's
+// reply is unparseable — the caller treats null as "no verdict, keep
+// the primary output".
+async function critiqueOutput(input: {
+  proxyBase: string;
+  headers: Record<string, string>;
+  model: string;
+  taskPrompt: string;
+  candidateOutput: string;
+  temperature: number | undefined;
+}): Promise<{ pass: boolean; reasoning: string } | null> {
+  const messages = [
+    {
+      role: "system" as const,
+      content: "You are an impartial grader. Respond with strict JSON only.",
+    },
+    {
+      role: "user" as const,
+      content: [
+        "Grade the following candidate output against this 4-line rubric:",
+        "1. Did it answer the task as asked?",
+        "2. Did it stay in scope?",
+        "3. Did it cite or ground its claims when applicable?",
+        "4. Did it avoid hallucination / fabrication?",
+        "",
+        "**Task:**",
+        input.taskPrompt,
+        "",
+        "**Candidate output:**",
+        input.candidateOutput || "(empty)",
+        "",
+        `Reply with JSON: {"pass": <true|false>, "reasoning": "<one short sentence>"}`,
+      ].join("\n"),
+    },
+  ];
+  let res: Response;
+  try {
+    res = await fetch(`${input.proxyBase}/chat/completions`, {
+      method: "POST",
+      headers: input.headers,
+      body: JSON.stringify({
+        model: input.model,
+        messages,
+        temperature: input.temperature ?? 0,
+        stream: false,
+        response_format: { type: "json_object" },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    return null;
+  }
+  if (!res.ok) return null;
+  let parsed: { choices?: Array<{ message?: { content?: string } }> };
+  try {
+    parsed = JSON.parse(await res.text());
+  } catch {
+    return null;
+  }
+  const text = parsed.choices?.[0]?.message?.content?.trim() ?? "";
+  if (!text) return null;
+  let verdict: { pass?: unknown; reasoning?: unknown };
+  try {
+    verdict = JSON.parse(text);
+  } catch {
+    // Try to find a {} block.
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start < 0 || end <= start) return null;
+    try {
+      verdict = JSON.parse(text.slice(start, end + 1));
+    } catch {
+      return null;
+    }
+  }
+  if (typeof verdict.pass !== "boolean") return null;
+  return {
+    pass: verdict.pass,
+    reasoning: typeof verdict.reasoning === "string" ? verdict.reasoning : "",
   };
 }
 
@@ -166,15 +256,78 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     await ctx.onLog("stdout", "\n");
   }
 
+  // Output Self-Critic: optional second pass that asks the same model
+  // to grade the candidate output. On a fail verdict we do one
+  // non-streamed retry with the critique appended. Total worst-case is
+  // 3 cheap calls (primary + critique + retry).
+  let criticVerdict: { pass: boolean; reasoning: string } | null = null;
+  let retryUsage: typeof usage | null = null;
+  if (config.selfCritic && assistantText.trim()) {
+    const taskPrompt = readPromptFromContext(ctx.context);
+    criticVerdict = await critiqueOutput({
+      proxyBase,
+      headers,
+      model,
+      taskPrompt,
+      candidateOutput: assistantText,
+      temperature: config.temperature,
+    });
+    if (criticVerdict && !criticVerdict.pass) {
+      const retryMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+      if (config.systemPrompt) retryMessages.push({ role: "system", content: config.systemPrompt });
+      retryMessages.push({ role: "user", content: taskPrompt });
+      retryMessages.push({ role: "assistant", content: assistantText });
+      retryMessages.push({
+        role: "user",
+        content: [
+          "Your previous reply did not pass the rubric grader.",
+          `Reason: ${criticVerdict.reasoning || "(no reasoning provided)"}.`,
+          "Please revise your previous answer to address that feedback. Reply with the corrected answer only.",
+        ].join("\n"),
+      });
+      try {
+        const retryRes = await fetch(`${proxyBase}/chat/completions`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            model,
+            messages: retryMessages,
+            temperature: config.temperature ?? 0.2,
+            max_tokens: config.maxTokens,
+            stream: false,
+          }),
+          signal: AbortSignal.timeout(60_000),
+        });
+        if (retryRes.ok) {
+          const retryBody = JSON.parse(await retryRes.text()) as {
+            choices?: Array<{ message?: { content?: string } }>;
+            usage?: typeof usage;
+          };
+          const retryText = retryBody.choices?.[0]?.message?.content ?? "";
+          if (retryText) {
+            await ctx.onLog("stdout", `\n[self-critic retry]\n${retryText}\n`);
+            assistantText = retryText;
+            retryUsage = retryBody.usage ?? null;
+          }
+        }
+      } catch (err) {
+        await ctx.onLog("stderr", `self-critic retry failed: ${err instanceof Error ? err.message : String(err)}\n`);
+      }
+    }
+  }
+
   const latencyMs = Date.now() - startedAt;
+  const totalInput = (usage.prompt_tokens ?? 0) + (retryUsage?.prompt_tokens ?? 0);
+  const totalOutput = (usage.completion_tokens ?? 0) + (retryUsage?.completion_tokens ?? 0);
+  const totalCached = (usage.cached_input_tokens ?? 0) + (retryUsage?.cached_input_tokens ?? 0);
   return {
     exitCode: 0,
     signal: null,
     timedOut: false,
     usage: {
-      inputTokens: usage.prompt_tokens ?? 0,
-      outputTokens: usage.completion_tokens ?? 0,
-      cachedInputTokens: usage.cached_input_tokens ?? 0,
+      inputTokens: totalInput,
+      outputTokens: totalOutput,
+      cachedInputTokens: totalCached,
     },
     sessionId: completionId,
     sessionParams: completionId ? { sessionId: completionId } : null,
@@ -184,7 +337,11 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     model,
     billingType: "metered_api",
     summary: assistantText.slice(0, 200) || null,
-    resultJson: { latencyMs, finishReason },
+    resultJson: {
+      latencyMs,
+      finishReason,
+      ...(criticVerdict ? { selfCritic: criticVerdict } : {}),
+    },
   };
 }
 

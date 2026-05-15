@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@nessie/db";
 import { agentBusMessages } from "@nessie/db";
 import { canSendBusKindAtLevel, requiresOperatorApproval } from "./agent-permissions.js";
+import { busAutoReplyRulesService } from "./bus-auto-reply-rules.js";
 
 // Agent Bus service. Plan §19. Typed message layer between agents and
 // to/from the operator.
@@ -40,22 +41,25 @@ export class AgentBusService {
   }) {
     let kind: string = input.kind;
     let payload = input.payload;
+    let rewrapReason: string | null = null;
     if (typeof input.senderAutonomyLevel === "number") {
       const level = input.senderAutonomyLevel;
       if (!canSendBusKindAtLevel(input.kind, level)) {
         // wrap into operator_approval_request
         kind = "operator_approval_request";
+        rewrapReason = `autonomy L${level} insufficient for kind=${input.kind}`;
         payload = {
           originalKind: input.kind,
           originalPayload: input.payload,
-          reason: `autonomy L${level} insufficient for kind=${input.kind}`,
+          reason: rewrapReason,
         };
       } else if (requiresOperatorApproval(input.kind, level) && input.kind !== "operator_approval_request") {
         kind = "operator_approval_request";
+        rewrapReason = `kind=${input.kind} requires operator approval at L${level}`;
         payload = {
           originalKind: input.kind,
           originalPayload: input.payload,
-          reason: `kind=${input.kind} requires operator approval at L${level}`,
+          reason: rewrapReason,
         };
       }
     }
@@ -72,6 +76,56 @@ export class AgentBusService {
         status: "pending",
       })
       .returning();
+    // Sibling policy_check row when rewrap happened: surfaces the gating
+    // event in the bus inspector independently of the wrapped message.
+    // Direct insert (skip send() recursion) so this can never re-enter
+    // gating itself.
+    if (rewrapReason) {
+      await this.db
+        .insert(agentBusMessages)
+        .values({
+          companyId: input.companyId,
+          fromAgentId: input.fromAgentId ?? null,
+          toAgentId: null,
+          kind: "policy_check",
+          payload: {
+            originalKind: input.kind,
+            reason: rewrapReason,
+            wrappedMessageId: created.id,
+          },
+          parentMessageId: created.id,
+          status: "pending",
+        });
+    }
+    // Auto-Reply Rules: evaluate operator-defined rules against the
+    // freshly inserted message. If a rule matches, apply its action
+    // (dismiss / auto_reply) before the operator inbox renders.
+    const rule = await busAutoReplyRulesService(this.db).evaluate(input.companyId, {
+      kind,
+      fromAgentId: input.fromAgentId ?? null,
+      payload,
+    });
+    if (rule) {
+      const now = new Date();
+      const patch: Record<string, unknown> = {
+        status: rule.action === "dismiss" ? "dismissed" : "replied",
+        updatedAt: now,
+        payload: { ...payload, autoReplyRuleId: rule.id, autoReplyRuleName: rule.name },
+      };
+      if (rule.action === "auto_reply") patch.repliedAt = now;
+      await this.db.update(agentBusMessages).set(patch).where(eq(agentBusMessages.id, created.id));
+      if (rule.action === "auto_reply" && rule.replyTemplate) {
+        await this.db.insert(agentBusMessages).values({
+          companyId: input.companyId,
+          fromAgentId: null,
+          toAgentId: input.fromAgentId ?? null,
+          kind: "handoff",
+          payload: { ...rule.replyTemplate, autoReplyRuleId: rule.id, replyTo: created.id },
+          parentMessageId: created.id,
+          status: "delivered",
+        });
+      }
+    }
     return created;
   }
 

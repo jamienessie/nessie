@@ -1,5 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import type { Db } from "@nessie/db";
+import { candidates, hires } from "@nessie/db";
+import { eq } from "drizzle-orm";
 import { hiresService, type HireState } from "../services/hires.js";
 import {
   ensureHrAgent,
@@ -7,6 +9,8 @@ import {
   synthesizeScorecard,
 } from "../services/hr-orchestrator.js";
 import { meetingsService } from "../services/meetings.js";
+import { logActivity } from "../services/activity-log.js";
+import { getActorInfo } from "./authz.js";
 
 // HR pipeline REST surface. Mounted at /api.
 
@@ -29,6 +33,16 @@ function pickCompanyId(req: Request): string | null {
 export function hireRoutes(db: Db): Router {
   const router = Router();
   const svc = hiresService(db);
+
+  async function resolveCompanyForCandidate(candidateId: string): Promise<string | null> {
+    const rows = await db
+      .select({ companyId: hires.companyId })
+      .from(candidates)
+      .innerJoin(hires, eq(candidates.hireId, hires.id))
+      .where(eq(candidates.id, candidateId))
+      .limit(1);
+    return rows[0]?.companyId ?? null;
+  }
 
   // -----------------------------------------------------------------
   // role_templates (catalog)
@@ -106,6 +120,17 @@ export function hireRoutes(db: Db): Router {
         ? (body.packet as Record<string, unknown>)
         : undefined,
     });
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      action: "hire.created",
+      entityType: "hire",
+      entityId: hire.id,
+      details: { title: hire.title, requestedTier: tier ?? null },
+    });
     res.status(201).json({ hire });
   });
 
@@ -122,6 +147,7 @@ export function hireRoutes(db: Db): Router {
     }
     const hireId = paramId(req, "id");
     try {
+      const before = await svc.getHire(companyId, hireId);
       const hire = await svc.transitionHire(companyId, hireId, to);
       // Auto-generate candidates on first entry to `sourcing`. Fire-and-
       // forget so the operator gets the transition response immediately.
@@ -139,6 +165,17 @@ export function hireRoutes(db: Db): Router {
             .catch((err) => console.error("[hires] auto-generate threw", err));
         }
       }
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "hire.transitioned",
+        entityType: "hire",
+        entityId: hire.id,
+        details: { from: before?.status ?? null, to },
+      });
       res.json({ hire });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -294,10 +331,25 @@ export function hireRoutes(db: Db): Router {
       res.status(400).json({ error: "to required" });
       return;
     }
-    const updated = await svc.setCandidateStatus(paramId(req, "id"), to as never);
+    const candidateId = paramId(req, "id");
+    const updated = await svc.setCandidateStatus(candidateId, to as never);
     if (!updated) {
       res.status(404).json({ error: "candidate not found" });
       return;
+    }
+    const companyId = await resolveCompanyForCandidate(candidateId);
+    if (companyId) {
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "candidate.status_changed",
+        entityType: "candidate",
+        entityId: candidateId,
+        details: { to },
+      });
     }
     res.json({ candidate: updated });
   });
@@ -313,8 +365,9 @@ export function hireRoutes(db: Db): Router {
       res.status(400).json({ error: "rubric must be an array of {criterion, weight, score, note?}" });
       return;
     }
+    const candidateId = paramId(req, "id");
     const scorecard = await svc.addScorecard({
-      candidateId: paramId(req, "id"),
+      candidateId,
       pass,
       rubric: body.rubric as Array<{ criterion: string; weight: number; score: number; note?: string }>,
       recommendation: pickString(body.recommendation) as
@@ -323,6 +376,20 @@ export function hireRoutes(db: Db): Router {
         ?? undefined,
       notes: pickString(body.notes),
     });
+    const companyId = await resolveCompanyForCandidate(candidateId);
+    if (companyId) {
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "candidate.scorecard_added",
+        entityType: "scorecard",
+        entityId: scorecard.id,
+        details: { candidateId, pass, recommendation: scorecard.recommendation },
+      });
+    }
     res.status(201).json({ scorecard });
   });
 
@@ -353,10 +420,11 @@ export function hireRoutes(db: Db): Router {
       return;
     }
     try {
+      const candidateId = paramId(req, "id");
       const agent = await svc.mintHiredAgent({
         companyId,
         hireId,
-        candidateId: paramId(req, "id"),
+        candidateId,
         finalFirstName: first,
         finalLastName: last,
         finalTitle: title,
@@ -365,6 +433,17 @@ export function hireRoutes(db: Db): Router {
         finalDepartmentId: pickString(body.finalDepartmentId),
         finalAutonomyLevel: typeof body.finalAutonomyLevel === "number" ? body.finalAutonomyLevel : undefined,
         roleTemplateKey: pickString(body.roleTemplateKey),
+      });
+      const actor = getActorInfo(req);
+      await logActivity(db, {
+        companyId,
+        actorType: actor.actorType,
+        actorId: actor.actorId,
+        agentId: actor.agentId,
+        action: "candidate.minted",
+        entityType: "agent",
+        entityId: agent.id,
+        details: { hireId, candidateId, finalTitle: title, finalTier: tier },
       });
       res.status(201).json({ agent });
     } catch (err) {

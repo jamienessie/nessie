@@ -25,6 +25,8 @@ import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { Button } from "@/components/ui/button";
 import { Identity } from "../components/Identity";
+import { AgentLabel } from "../components/AgentLabel";
+import { useInvalidateOnLiveEvent } from "../hooks/useInvalidateOnLiveEvent";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { EmptyState } from "../components/EmptyState";
 import { Link } from "@/lib/router";
@@ -88,10 +90,13 @@ function AttendeeChip({ agent, role }: { agent: Agent | undefined; role: string 
       )}
       title={agent ? `${agent.name}${agent.title ? ` · ${agent.title}` : ""} (${role})` : role}
     >
-      <span className={cn("h-2 w-2 rounded-full", accent.bg)} aria-hidden />
-      <span className="text-xs font-medium">{agent?.name ?? "(missing agent)"}</span>
-      {!isObserver && agent?.title && (
-        <span className="text-[10px] text-muted-foreground">· {agent.title}</span>
+      {agent ? (
+        <AgentLabel agent={agent} showRole={!isObserver} size="sm" />
+      ) : (
+        <>
+          <span className={cn("h-2 w-2 rounded-full", accent.bg)} aria-hidden />
+          <span className="text-xs font-medium">(missing agent)</span>
+        </>
       )}
       <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 font-mono">
         {role}
@@ -250,11 +255,23 @@ export function MeetingRoom() {
   const [composer, setComposer] = useState("");
   const messageListRef = useRef<HTMLDivElement | null>(null);
 
+  const detailKey = ["meeting", selectedCompanyId, meetingId];
   const detail = useQuery({
-    queryKey: ["meeting", selectedCompanyId, meetingId],
+    queryKey: detailKey,
     queryFn: () => meetingsApi.get(selectedCompanyId!, meetingId),
     enabled: !!selectedCompanyId && !!meetingId,
-    refetchInterval: 5_000,
+  });
+  // Replace 5s poll with WS-driven invalidation. Server publishes these
+  // event types from server/src/services/meetings.ts on every mutation.
+  useInvalidateOnLiveEvent({
+    companyId: selectedCompanyId ?? null,
+    mapping: {
+      "meeting.message.added": [detailKey],
+      "meeting.transitioned": [detailKey],
+      "meeting.participant.added": [detailKey],
+      "meeting.outcome.added": [detailKey],
+      "meeting.outcome.approved": [detailKey],
+    },
   });
 
   const { data: agents } = useQuery({
