@@ -28,6 +28,9 @@ import { ApprovalDetail } from "./pages/ApprovalDetail";
 import { Costs } from "./pages/Costs";
 import { Activity } from "./pages/Activity";
 import { Inbox } from "./pages/Inbox";
+import { DreamJournal } from "./pages/DreamJournal";
+import { CompanyGenerate } from "./pages/CompanyGenerate";
+import { ClipMart } from "./pages/ClipMart";
 import { Departments } from "./pages/Departments";
 import { Hiring } from "./pages/Hiring";
 import { HireDetail } from "./pages/hiring/HireDetail";
@@ -149,6 +152,9 @@ function boardRoutes() {
       <Route path="inbox/all" element={<Inbox />} />
       <Route path="inbox/requests" element={<JoinRequestQueue />} />
       <Route path="inbox/new" element={<Navigate to="/inbox/mine" replace />} />
+      <Route path="dreams" element={<DreamJournal />} />
+      <Route path="companies/generate" element={<CompanyGenerate />} />
+      <Route path="clipmart" element={<ClipMart />} />
       <Route path="u/:userSlug" element={<UserProfile />} />
       <Route path="design-guide" element={<DesignGuide />} />
       <Route path="instance/settings/adapters" element={<AdapterManager />} />

@@ -29,6 +29,11 @@ import { userProfileRoutes } from "./routes/user-profiles.js";
 import { sidebarBadgeRoutes } from "./routes/sidebar-badges.js";
 import { sidebarPreferenceRoutes } from "./routes/sidebar-preferences.js";
 import { inboxDismissalRoutes } from "./routes/inbox-dismissals.js";
+import { dreamRoutes } from "./routes/dreams.js";
+import { companyGeneratorRoutes } from "./routes/company-generator.js";
+import { clipmartRoutes } from "./routes/clipmart.js";
+import { tournamentRoutes } from "./routes/tournaments.js";
+import { voiceRoutes } from "./routes/voice.js";
 import { instanceSettingsRoutes } from "./routes/instance-settings.js";
 import {
   instanceDatabaseBackupRoutes,
@@ -245,6 +250,11 @@ export async function createApp(
   api.use(sidebarBadgeRoutes(db));
   api.use(sidebarPreferenceRoutes(db));
   api.use(inboxDismissalRoutes(db));
+  api.use(dreamRoutes(db));
+  api.use(companyGeneratorRoutes(db));
+  api.use(clipmartRoutes(db));
+  api.use(tournamentRoutes(db));
+  api.use(voiceRoutes(db));
   api.use(instanceSettingsRoutes(db));
   if (opts.databaseBackupService) {
     api.use(instanceDatabaseBackupRoutes(opts.databaseBackupService));

@@ -16,6 +16,7 @@ import {
   logActivity,
   secretService,
 } from "../services/index.js";
+import { approvalDebateService } from "../services/approval-debates.js";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { redactEventPayload } from "../redaction.js";
 import type { PluginWorkerManager } from "../services/plugin-worker-manager.js";
@@ -38,6 +39,7 @@ export function approvalRoutes(
   });
   const issueApprovalsSvc = issueApprovalService(db);
   const secretsSvc = secretService(db);
+  const debateSvc = approvalDebateService(db);
   const strictSecretsMode = process.env.PAPERCLIP_SECRETS_STRICT_MODE === "true";
 
   async function requireApprovalAccess(req: Request, id: string) {
@@ -280,6 +282,37 @@ export function approvalRoutes(
       res.json(redactApprovalPayload(approval));
     },
   );
+
+  // Red/Blue Team — generate (or regenerate) a structured debate for an
+  // approval. Stored inside `approval.payload.debate` so no migration is
+  // required. The generator is templated for now; swap with an LLM-backed
+  // version when the server-side adapter integration lands.
+  router.post("/approvals/:id/debate/generate", async (req, res) => {
+    const id = req.params.id as string;
+    const approval = await svc.getById(id);
+    if (!approval) {
+      res.status(404).json({ error: "Approval not found" });
+      return;
+    }
+    assertCompanyAccess(req, approval.companyId);
+
+    const { debate, warning } = await debateSvc.generate(id);
+
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId: approval.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "approval.debate_generated",
+      entityType: "approval",
+      entityId: approval.id,
+      details: { generator: debate.generator, warning: warning ?? null },
+    });
+
+    res.json({ ...debate, warning: warning ?? null });
+  });
 
   router.post("/approvals/:id/resubmit", validate(resubmitApprovalSchema), async (req, res) => {
     const id = req.params.id as string;

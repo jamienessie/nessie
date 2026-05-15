@@ -34,6 +34,7 @@ import { useInboxBadge } from "../hooks/useInboxBadge";
 import { Button } from "@/components/ui/button";
 import { PluginSlotOutlet } from "@/plugins/slots";
 import { SidebarCompanyMenu } from "./SidebarCompanyMenu";
+import { VoiceModeButton } from "./VoiceMode";
 
 export function Sidebar() {
   const { openNewIssue } = useDialogActions();
@@ -103,6 +104,9 @@ export function Sidebar() {
         <span className="font-mono text-[9.5px] text-[#888] border border-[#444] px-1">C</span>
       </button>
 
+      {/* Voice mode — opens an in-app mic modal to talk to the CEO. */}
+      <VoiceModeButton />
+
       <nav className="flex-1 min-h-0 overflow-y-auto scrollbar-auto-hide flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <SidebarNavItem to="/dashboard" label="Dashboard" swatchColor="#FF4D2E" liveCount={liveRunCount} />
@@ -147,6 +151,9 @@ export function Sidebar() {
         <SidebarSection label="OPERATOR">
           <SidebarNavItem to="/chief-of-staff" label="Chief of Staff" swatchColor="#FF6B9A" />
           <SidebarNavItem to="/briefs" label="Briefs" swatchColor="#FFB400" />
+          <SidebarNavItem to="/dreams" label="Dream Journal" swatchColor="#7C5CFF" />
+          <SidebarNavItem to="/companies/generate" label="Generate Company" swatchColor="#FFC83A" />
+          <SidebarNavItem to="/clipmart" label="ClipMart" swatchColor="#1FA7FF" />
           <SidebarNavItem to="/plug-in-janitor" label="Plug-In Janitor" swatchColor="#FFA94D" />
           <SidebarNavItem to="/hiring" label="Hiring" swatchColor="#5B8DEF" />
           <SidebarNavItem to="/meetings" label="Meetings" swatchColor="#B872FF" />

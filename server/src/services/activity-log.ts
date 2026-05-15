@@ -70,22 +70,29 @@ export async function logActivity(db: Db, input: LogActivityInput) {
   const redactedDetails = sanitizedDetails
     ? redactCurrentUserValue(sanitizedDetails, currentUserRedactionOptions)
     : null;
-  await db.insert(activityLog).values({
-    companyId: input.companyId,
-    actorType: input.actorType,
-    actorId: input.actorId,
-    action: input.action,
-    entityType: input.entityType,
-    entityId: input.entityId,
-    agentId: input.agentId ?? null,
-    runId: input.runId ?? null,
-    details: redactedDetails,
-  });
+  const inserted = await db
+    .insert(activityLog)
+    .values({
+      companyId: input.companyId,
+      actorType: input.actorType,
+      actorId: input.actorId,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      agentId: input.agentId ?? null,
+      runId: input.runId ?? null,
+      details: redactedDetails,
+    })
+    .returning({ id: activityLog.id, createdAt: activityLog.createdAt });
+
+  const insertedRow = inserted[0] ?? null;
 
   publishLiveEvent({
     companyId: input.companyId,
     type: "activity.logged",
     payload: {
+      id: insertedRow?.id ?? null,
+      createdAt: insertedRow?.createdAt?.toISOString() ?? new Date().toISOString(),
       actorType: input.actorType,
       actorId: input.actorId,
       action: input.action,

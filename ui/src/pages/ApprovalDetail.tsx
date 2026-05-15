@@ -9,6 +9,8 @@ import { queryKeys } from "../lib/queryKeys";
 import { StatusBadge } from "../components/StatusBadge";
 import { Identity } from "../components/Identity";
 import { approvalLabel, typeIcon, defaultTypeIcon, ApprovalPayloadRenderer } from "../components/ApprovalPayload";
+import { ApprovalDebatePanel } from "../components/ApprovalDebatePanel";
+import type { ApprovalDebate } from "../api/approvals";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -147,6 +149,7 @@ export function ApprovalDetail() {
   const payload = approval.payload as Record<string, unknown>;
   const linkedAgentId = typeof payload.agentId === "string" ? payload.agentId : null;
   const isActionable = approval.status === "pending" || approval.status === "revision_requested";
+  const debate = (payload.debate ?? null) as ApprovalDebate | null;
   const isBudgetApproval = approval.type === "budget_override_required";
   const TypeIcon = typeIcon[approval.type] ?? defaultTypeIcon;
   const showApprovedBanner = searchParams.get("resolved") === "approved" && approval.status === "approved";
@@ -322,6 +325,12 @@ export function ApprovalDetail() {
           )}
         </div>
       </div>
+
+      <ApprovalDebatePanel
+        approvalId={approval.id}
+        debate={debate}
+        isOpen={isActionable}
+      />
 
       <div className="border border-border rounded-lg p-4 space-y-3">
         <h3 className="text-sm font-medium">Comments ({comments?.length ?? 0})</h3>

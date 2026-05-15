@@ -16,9 +16,11 @@ import { MetricCard } from "../components/MetricCard";
 import { EmptyState } from "../components/EmptyState";
 import { StatusIcon } from "../components/StatusIcon";
 
-import { ActivityRow } from "../components/ActivityRow";
+import { NewsTicker } from "../components/NewsTicker";
+import { DreamsWidget } from "../components/DreamsWidget";
 import { Identity } from "../components/Identity";
 import { timeAgo } from "../lib/timeAgo";
+import { useNewsroomLive } from "../lib/useNewsroomLive";
 import { cn, formatCents } from "../lib/utils";
 import { Bot, CircleDot, DollarSign, ShieldCheck, LayoutDashboard, PauseCircle } from "lucide-react";
 import { ActiveAgentsPanel } from "../components/ActiveAgentsPanel";
@@ -64,6 +66,11 @@ export function Dashboard() {
     queryFn: () => activityApi.list(selectedCompanyId!, { limit: DASHBOARD_ACTIVITY_LIMIT }),
     enabled: !!selectedCompanyId,
   });
+
+  // Newsroom: subscribe to the company's live event WebSocket and prepend
+  // `activity.logged` events into the React Query cache as they arrive. The
+  // poll query above continues to run as a backstop in case the WS drops.
+  useNewsroomLive(selectedCompanyId);
 
   const { data: issues } = useQuery({
     queryKey: queryKeys.issues.list(selectedCompanyId!),
@@ -313,20 +320,25 @@ export function Dashboard() {
             itemClassName="stack-card p-4"
           />
 
+          <DreamsWidget companyId={selectedCompanyId!} />
+
           <div className="grid md:grid-cols-2 gap-3">
-            {/* Recent Activity */}
+            {/* Live Newsroom */}
             {recentActivity.length > 0 && (
               <div className="min-w-0">
                 <div className="stack-card flex flex-col min-h-0 overflow-hidden">
                   <div className="stack-panel-header" style={{ ["--stack-accent" as string]: "#A4D81F" }}>
-                    <span className="w-3 h-3 rounded-full bg-[#0d0c10]" />
-                    RECENT ACTIVITY
+                    <span
+                      className="w-3 h-3 rounded-full bg-[#FF4D2E] animate-pulse"
+                      aria-label="Live"
+                    />
+                    LIVE NEWSROOM
                     <span className="flex-1" />
-                    <span className="font-mono text-[10px] font-bold">{recentActivity.length} events</span>
+                    <span className="font-mono text-[10px] font-bold">{recentActivity.length} headlines</span>
                   </div>
                   <div className="flex-1 overflow-hidden divide-y-[1.5px] divide-[#0d0c10]">
                     {recentActivity.map((event) => (
-                      <ActivityRow
+                      <NewsTicker
                         key={event.id}
                         event={event}
                         agentMap={agentMap}

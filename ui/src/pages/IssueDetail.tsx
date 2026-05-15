@@ -78,6 +78,7 @@ import { IssueWorkspaceCard } from "../components/IssueWorkspaceCard";
 import type { MentionOption } from "../components/MarkdownEditor";
 import { ImageGalleryModal } from "../components/ImageGalleryModal";
 import { ScrollToBottom } from "../components/ScrollToBottom";
+import { IssueTournamentPanel } from "../components/IssueTournamentPanel";
 import { StatusIcon } from "../components/StatusIcon";
 import { PriorityIcon } from "../components/PriorityIcon";
 import { ProductivityReviewBadge } from "../components/ProductivityReviewBadge";
@@ -3882,6 +3883,11 @@ export function IssueDetail() {
           </TabsContent>
         )}
       </Tabs>
+
+      <IssueTournamentPanel
+        issueRef={issue.identifier ?? issue.id}
+        companyId={issue.companyId}
+      />
 
       <Dialog open={treeControlOpen} onOpenChange={setTreeControlOpen}>
         <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[560px]">
